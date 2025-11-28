@@ -44,15 +44,21 @@ export const agentTools: FunctionDeclaration[] = [
 ];
 
 // 1. Content Analysis (Deep Thinking)
-export const analyzeDraft = async (text: string): Promise<AnalysisResult> => {
+export const analyzeDraft = async (text: string, setting?: { timePeriod: string, location: string }): Promise<AnalysisResult> => {
   const model = 'gemini-3-pro-preview'; 
   
+  const settingContext = setting 
+    ? `SETTING CONTEXT: Time Period: ${setting.timePeriod}, Location: ${setting.location}.` 
+    : `SETTING CONTEXT: General Fiction (Unknown setting).`;
+
   const prompt = `You are a world-class literary editor. Analyze the following book draft text.
+  ${settingContext}
   
   Your task is to provide a deep, comprehensive critique focusing specifically on:
-  1. PACING & FLOW: Evaluate the rhythm of the narrative. Identify specific sections that drag (too slow) or rush (too fast). Analyze if the length of scenes supports the engagement. Give it a score from 1-10.
-  2. PLOT HOLES & INCONSISTENCIES: Scrutinize the plot for logic gaps, dropped narrative threads, or contradictions. Provide concrete examples and how to fix them.
-  3. CHARACTER ARCS & RELATIONSHIPS: Track the development of major characters. Create a brief bio for each. Identify key relationships for each character (allies, rivals, family, etc.) and describe the dynamic. Map out the specific plot threads each character is involved in. BREAK DOWN their specific arc into 3-5 key stages (e.g. Introduction, Conflict, Climax) showing their progression. Are their motivations clear? do they grow? Are there inconsistencies in behavior?
+  1. PACING & FLOW: Evaluate the rhythm.
+  2. PLOT HOLES & INCONSISTENCIES: Scrutinize logic gaps. CRITICAL: For every issue, provide a short "quote" from the text that evidences the problem.
+  3. CHARACTER ARCS & RELATIONSHIPS: Track development.
+  4. SETTING & ERA CONSISTENCY: Identify anachronisms, language/slang that doesn't fit the ${setting ? 'specified time period' : 'apparent setting'}, or tone mismatches. E.g. using modern slang in 1800s. Provide specific replacement suggestions.
   
   Provide the output in strict JSON format matching the schema.
   
@@ -81,6 +87,27 @@ export const analyzeDraft = async (text: string): Promise<AnalysisResult> => {
             },
             required: ["score", "analysis", "slowSections", "fastSections"]
           },
+          settingAnalysis: {
+            type: Type.OBJECT,
+            properties: {
+                score: { type: Type.NUMBER, description: "1-10" },
+                analysis: { type: Type.STRING },
+                issues: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            quote: { type: Type.STRING },
+                            issue: { type: Type.STRING, description: "Description of the anachronism or tone error"},
+                            suggestion: { type: Type.STRING },
+                            alternatives: { type: Type.ARRAY, items: { type: Type.STRING } }
+                        },
+                        required: ["quote", "issue", "suggestion"]
+                    }
+                }
+            },
+            required: ["score", "analysis", "issues"]
+          },
           plotIssues: {
             type: Type.ARRAY,
             items: {
@@ -88,7 +115,8 @@ export const analyzeDraft = async (text: string): Promise<AnalysisResult> => {
               properties: {
                 issue: { type: Type.STRING },
                 location: { type: Type.STRING, description: "Where in the text this happens" },
-                suggestion: { type: Type.STRING, description: "How to resolve it" }
+                suggestion: { type: Type.STRING, description: "How to resolve it" },
+                quote: { type: Type.STRING, description: "Exact quote from text evidencing this issue (max 20 words)" }
               },
               required: ["issue", "location", "suggestion"]
             }
@@ -99,38 +127,46 @@ export const analyzeDraft = async (text: string): Promise<AnalysisResult> => {
               type: Type.OBJECT,
               properties: {
                 name: { type: Type.STRING },
-                bio: { type: Type.STRING, description: "Brief bio including traits and motivations." },
-                arc: { type: Type.STRING, description: "Summary of their journey/growth" },
+                bio: { type: Type.STRING },
+                arc: { type: Type.STRING },
                 arcStages: {
                     type: Type.ARRAY,
                     items: {
                         type: Type.OBJECT,
                         properties: {
-                            stage: { type: Type.STRING, description: "Name of the stage (e.g., 'The Call', 'The Fall')"},
-                            description: { type: Type.STRING, description: "What happens to the character internally/externally here."}
+                            stage: { type: Type.STRING},
+                            description: { type: Type.STRING}
                         },
                         required: ["stage", "description"]
-                    },
-                    description: "3-5 key stages of the character's progression."
+                    }
                 },
                 relationships: {
                     type: Type.ARRAY,
                     items: {
                         type: Type.OBJECT,
                         properties: {
-                            name: { type: Type.STRING, description: "Name of the related character" },
-                            type: { type: Type.STRING, description: "Type of relationship (e.g. Ally, Rival, Sibling)" },
-                            dynamic: { type: Type.STRING, description: "Brief description of their interaction/dynamic" }
+                            name: { type: Type.STRING },
+                            type: { type: Type.STRING },
+                            dynamic: { type: Type.STRING }
                         },
                         required: ["name", "type", "dynamic"]
                     }
                 },
                 plotThreads: {
                     type: Type.ARRAY, 
-                    items: { type: Type.STRING },
-                    description: "Specific storylines or plot threads this character drives or is involved in."
+                    items: { type: Type.STRING }
                 },
-                inconsistencies: { type: Type.ARRAY, items: { type: Type.STRING } },
+                inconsistencies: { 
+                    type: Type.ARRAY, 
+                    items: { 
+                        type: Type.OBJECT,
+                        properties: {
+                            issue: { type: Type.STRING },
+                            quote: { type: Type.STRING, description: "Exact quote from text evidencing this inconsistency" }
+                        },
+                        required: ["issue"]
+                    } 
+                },
                 developmentSuggestion: { type: Type.STRING }
               },
               required: ["name", "bio", "arc", "arcStages", "relationships", "plotThreads", "inconsistencies", "developmentSuggestion"]
@@ -199,22 +235,26 @@ export const generatePlotIdeas = async (text: string, userInstruction?: string, 
 };
 
 // 1.8 Rewrite Text (Magic Editor)
-export const rewriteText = async (text: string, mode: string, tone?: string): Promise<string[]> => {
+export const rewriteText = async (text: string, mode: string, tone?: string, setting?: { timePeriod: string, location: string }): Promise<string[]> => {
   const model = 'gemini-3-pro-preview';
+
+  const settingInstruction = setting 
+    ? `The manuscript is set in ${setting.timePeriod} in ${setting.location}. Ensure all language, objects, and dialogue are historically and geographically accurate to this setting.`
+    : `Ensure the language matches the established tone of the text.`;
 
   const systemInstruction = `Role:
 You are DraftSmith, an expert literary editor and ghostwriter specializing in fiction. Your goal is to rewrite selected text to improve its quality based on a specific "Edit Mode." You must always provide 3 distinct, high-quality variations of the text.
 
 Context:
-The manuscript is a period drama set in late 19th-century rural America (farm life, horses, wagons). Ensure all rewritten dialogue and descriptions fit this setting.
+${settingInstruction}
 
 Instructions per Mode:
-If Mode is "Show, Don't Tell": Transform abstract summaries (e.g., "She was sad") into visceral, sensory descriptions (e.g., body language, physical sensations, environmental reflection). Do not use the abstract emotion word in the output.
-If Mode is "Dialogue Doctor": Remove "on-the-nose" exposition. Make the dialogue sound natural for the time period. Add subtext—characters should rarely say exactly what they mean. Remove excessive pleasantries unless character-specific.
+If Mode is "Show, Don't Tell": Transform abstract summaries into visceral, sensory descriptions.
+If Mode is "Dialogue Doctor": Remove "on-the-nose" exposition. Make the dialogue sound natural for the time period/setting. Add subtext.
 If Mode is "Tone Tuner": Rewrite the text to strictly match the requested tone (e.g., Darker, Humorous, Formal) while keeping the original plot point intact.
 
 Output Format:
-Return ONLY valid JSON. Do not include markdown formatting like \`\`\`json.
+Return ONLY valid JSON.
 Structure:
 { "variations": ["Variation 1 text...", "Variation 2 text...", "Variation 3 text..."] }`;
 
@@ -254,9 +294,9 @@ ${mode === 'Tone Tuner' ? `Target Tone: ${tone}` : ''}`;
 // 1.9 Contextual Help (Explain/Thesaurus)
 export const getContextualHelp = async (text: string, type: 'Explain' | 'Thesaurus'): Promise<string> => {
   const model = 'gemini-2.5-flash'; // Faster model for tools
-  const systemInstruction = `You are a helpful writing assistant for a period drama set in late 19th-century rural America.
+  const systemInstruction = `You are a helpful writing assistant.
   If type is 'Explain': Provide a concise definition or historical context for the selected term/phrase.
-  If type is 'Thesaurus': Provide 5 synonyms that fit the 19th-century period setting. Return ONLY a comma-separated list (e.g., "Word1, Word2, Word3").`;
+  If type is 'Thesaurus': Provide 5 synonyms that fit the tone and period of the text. Return ONLY a comma-separated list.`;
   
   const prompt = `Type: ${type}\nText: "${text}"\nKeep the answer short and helpful.`;
 
@@ -274,7 +314,7 @@ export const createAgentSession = () => {
   return ai.chats.create({
     model: 'gemini-2.5-flash', // Fast for tool calling loops
     config: {
-      systemInstruction: `You are DraftSmith Agent, an advanced AI editor embedded in a text editor (like Cursor or Windsurf). 
+      systemInstruction: `You are DraftSmith Agent, an advanced AI editor embedded in a text editor. 
       
       CAPABILITIES:
       1. You can READ the user's cursor position and selection.
@@ -319,7 +359,6 @@ export const generateSpeech = async (text: string): Promise<AudioBuffer | null> 
       24000,
       1
     );
-    // Close it immediately to free resources
     if (audioContext.state !== 'closed') {
       await audioContext.close();
     }
@@ -337,7 +376,6 @@ export const connectLiveSession = async (
 ) => {
   const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
   
-  // We need a way to send data back to the caller
   let sendAudioInput: ((blob: any) => void) | undefined;
   
   const sessionPromise = ai.live.connect({
@@ -356,7 +394,6 @@ export const connectLiveSession = async (
       onmessage: async (message: LiveServerMessage) => {
         const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
         if (base64Audio) {
-          // Check if context is valid before decoding/using
           if (outputAudioContext.state === 'closed') return;
           
           const audioBuffer = await decodeAudioData(
@@ -386,7 +423,6 @@ export const connectLiveSession = async (
       session.sendRealtimeInput({ media: pcmBlob });
     },
     disconnect: async () => {
-      // Close the output context to prevent leaks
       if (outputAudioContext.state !== 'closed') {
         await outputAudioContext.close();
       }

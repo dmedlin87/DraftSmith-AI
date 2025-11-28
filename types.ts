@@ -10,10 +10,22 @@ export interface AnalysisResult {
     fastSections: string[];
   };
 
+  settingAnalysis?: {
+    score: number;
+    analysis: string;
+    issues: Array<{
+      quote: string;
+      issue: string;
+      suggestion: string;
+      alternatives?: string[];
+    }>;
+  };
+
   plotIssues: Array<{
     issue: string;
     location: string;
     suggestion: string;
+    quote?: string; // New: Text snippet for locating
   }>;
 
   characters: Array<{
@@ -30,7 +42,11 @@ export interface AnalysisResult {
       dynamic: string;
     }>;
     plotThreads: string[];
-    inconsistencies: string[];
+    // Changed from string[] to object array for context
+    inconsistencies: Array<{
+      issue: string;
+      quote?: string;
+    }>;
     developmentSuggestion: string;
   }>;
   
@@ -72,8 +88,14 @@ export interface HistoryItem {
   newContent: string;
 }
 
+export interface HighlightRange {
+  start: number;
+  end: number;
+  type: 'issue' | 'inconsistency' | 'pacing' | 'setting';
+}
+
 export enum AppMode {
-  UPLOAD = 'UPLOAD',
+  UPLOAD = 'UPLOAD', // Used for Project Dashboard
   EDITOR = 'EDITOR',
 }
 

@@ -5,16 +5,29 @@ import { StrengthsWeaknesses } from './analysis/StrengthsWeaknesses';
 import { PacingSection } from './analysis/PacingSection';
 import { PlotIssuesSection } from './analysis/PlotIssuesSection';
 import { CharactersSection } from './analysis/CharactersSection';
+import { SettingConsistencySection } from './analysis/SettingConsistencySection';
 import { BrainstormingPanel } from './analysis/BrainstormingPanel';
+import { findQuoteRange } from '../utils/textLocator';
 
 interface AnalysisPanelProps {
   analysis: AnalysisResult | null;
   isLoading: boolean;
   currentText: string;
+  onNavigate: (start: number, end: number) => void;
 }
 
-export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, currentText }) => {
+export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, currentText, onNavigate }) => {
   
+  const handleQuoteClick = (quote?: string) => {
+    if (!quote) return;
+    const range = findQuoteRange(currentText, quote);
+    if (range) {
+      onNavigate(range.start, range.end);
+    } else {
+      alert("Could not locate this exact text in the current chapter.");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-500 space-y-4">
@@ -37,9 +50,26 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoadin
     <div className="h-full overflow-y-auto p-6 space-y-8 prose-content">
       <ExecutiveSummary summary={analysis.summary} />
       <StrengthsWeaknesses strengths={analysis.strengths} weaknesses={analysis.weaknesses} />
+      
+      {analysis.settingAnalysis && (
+        <SettingConsistencySection 
+            issues={analysis.settingAnalysis.issues} 
+            score={analysis.settingAnalysis.score}
+            onQuoteClick={handleQuoteClick}
+        />
+      )}
+
       <PacingSection pacing={analysis.pacing} currentText={currentText} />
-      <PlotIssuesSection issues={analysis.plotIssues} />
-      <CharactersSection characters={analysis.characters} />
+      
+      <PlotIssuesSection 
+        issues={analysis.plotIssues} 
+        onQuoteClick={handleQuoteClick}
+      />
+      
+      <CharactersSection 
+        characters={analysis.characters} 
+        onQuoteClick={handleQuoteClick}
+      />
       
       <div>
          <h3 className="text-lg font-serif font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">General Suggestions</h3>

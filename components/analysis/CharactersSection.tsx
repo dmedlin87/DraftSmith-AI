@@ -3,9 +3,10 @@ import { AnalysisResult } from '../../types';
 
 interface Props {
     characters: AnalysisResult['characters'];
+    onQuoteClick: (quote?: string) => void;
 }
 
-export const CharactersSection: React.FC<Props> = ({ characters }) => {
+export const CharactersSection: React.FC<Props> = ({ characters, onQuoteClick }) => {
   return (
     <div>
     <h3 className="text-lg font-serif font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">Character Development</h3>
@@ -65,42 +66,6 @@ export const CharactersSection: React.FC<Props> = ({ characters }) => {
                         </div>
                     </div>
                 )}
-
-                {/* Narrative Threads (Secondary) */}
-                {char.plotThreads && char.plotThreads.length > 0 && (
-                    <div className="mb-6">
-                        <h5 className="text-xs font-bold text-gray-500 uppercase mb-3">Key Plot Points</h5>
-                        <div className="grid grid-cols-1 gap-2">
-                            {char.plotThreads.map((thread, tIdx) => (
-                                <div key={tIdx} className="flex items-start gap-2 text-xs text-gray-600">
-                                    <span className="text-indigo-400 mt-0.5">•</span>
-                                    <span>{thread}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Visual Relationship Map */}
-                {char.relationships && char.relationships.length > 0 && (
-                    <div className="mb-6">
-                        <h5 className="text-xs font-bold text-gray-500 uppercase mb-3">Relationship Map</h5>
-                        <div className="flex flex-wrap gap-3">
-                            {char.relationships.map((rel, rIdx) => (
-                                <div key={rIdx} className="flex-1 min-w-[200px] bg-white border border-gray-200 rounded-lg p-3 shadow-sm flex items-start gap-3 relative overflow-hidden group hover:border-gray-300 transition-colors">
-                                    <div className={`absolute top-0 left-0 bottom-0 w-1 ${rel.type.toLowerCase().includes('enemy') || rel.type.toLowerCase().includes('rival') ? 'bg-red-400' : 'bg-green-400'}`}></div>
-                                    <div className="flex-1 pl-1">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="font-bold text-gray-800 text-xs">{rel.name}</span>
-                                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-bold uppercase tracking-wider">{rel.type}</span>
-                                        </div>
-                                        <p className="text-[11px] text-gray-500 leading-snug">{rel.dynamic}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
                 
                 {/* Inconsistencies Warning */}
                 {char.inconsistencies.length > 0 && (
@@ -109,8 +74,17 @@ export const CharactersSection: React.FC<Props> = ({ characters }) => {
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                             Consistency Alerts
                         </span>
-                        <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
-                            {char.inconsistencies.map((inc, i) => <li key={i}>{inc}</li>)}
+                        <ul className="list-disc list-inside text-xs text-gray-700 space-y-2">
+                            {char.inconsistencies.map((inc, i) => (
+                                <li key={i} className="group cursor-pointer hover:text-red-800" onClick={() => onQuoteClick(inc.quote)}>
+                                    <span>{inc.issue}</span>
+                                    {inc.quote && (
+                                        <div className="text-[10px] text-gray-500 italic pl-4 mt-1 border-l border-red-200 group-hover:border-red-400">
+                                            "{inc.quote}"
+                                        </div>
+                                    )}
+                                </li>
+                            ))}
                         </ul>
                     </div>
                 )}
