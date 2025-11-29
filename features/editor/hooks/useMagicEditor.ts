@@ -53,7 +53,6 @@ export function useMagicEditor({
     setMagicHelpResult(null);
     setMagicHelpType(null);
     setMagicError(null);
-    operationSelectionRef.current = null;
   }, []);
 
   const handleRewrite = useCallback(async (mode: string, tone?: string) => {
@@ -130,6 +129,7 @@ export function useMagicEditor({
   const closeMagicBar = useCallback(() => {
     abortMagicOperation();
     resetMagicState();
+    operationSelectionRef.current = null;
     // Note: caller should decide whether to clear selection
   }, [abortMagicOperation, resetMagicState]);
 
