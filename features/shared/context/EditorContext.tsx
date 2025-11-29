@@ -1,7 +1,12 @@
-import React, { createContext, useContext, useCallback, useState, useMemo } from 'react';
+import React, { createContext, useContext, useCallback, useState } from 'react';
 import { useProjectStore } from '@/features/project';
 import { useDocumentHistory } from '@/features/editor/hooks/useDocumentHistory';
+import { useEditorSelection } from '@/features/editor/hooks/useEditorSelection';
+import { useEditorComments } from '@/features/editor/hooks/useEditorComments';
+import { useEditorBranching } from '@/features/editor/hooks/useEditorBranching';
+
 import { HistoryItem, HighlightRange, EditorContext as EditorContextType } from '@/types';
+
 import { Editor } from '@tiptap/react';
 import { Branch, InlineComment } from '@/types/schema';
 
@@ -66,6 +71,7 @@ export interface EditorContextValue {
 
   // Quill AI 3.0: Inline Comments
   inlineComments: InlineComment[];
+  visibleComments: InlineComment[];
   setInlineComments: (comments: InlineComment[]) => void;
   dismissComment: (commentId: string) => void;
   clearComments: () => void;
@@ -114,153 +120,44 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     handleSaveContent
   );
 
-  // Selection State
-  const [selectionRange, setSelectionRange] = useState<{ start: number; end: number; text: string } | null>(null);
-  const [selectionPos, setSelectionPos] = useState<{ top: number; left: number } | null>(null);
-  
-  // Tiptap provides 'from' as cursor position if empty selection
-  const cursorPosition = editor?.state.selection.from || 0;
-
-  const setSelectionState = useCallback((
-      range: { start: number; end: number; text: string } | null, 
-      pos: { top: number; left: number } | null
-  ) => {
-      setSelectionRange(range);
-      setSelectionPos(pos);
-  }, []);
-
-  const clearSelection = useCallback(() => {
-      setSelectionRange(null);
-      setSelectionPos(null);
-      editor?.commands.focus();
-  }, [editor]);
-
-  // UI State
-  const [activeHighlight, setActiveHighlight] = useState<HighlightRange | null>(null);
-
-  // Programmatic selection setter (for issue deep-linking)
-  const setSelection = useCallback((start: number, end: number) => {
-    if (!editor) return;
-    
-    // Clamp to valid range
-    const safeStart = Math.max(0, Math.min(start, editor.state.doc.content.size));
-    const safeEnd = Math.max(safeStart, Math.min(end, editor.state.doc.content.size));
-    
-    editor.chain()
-      .focus()
-      .setTextSelection({ from: safeStart, to: safeEnd })
-      .run();
-    
-    // Update local state
-    const selectedText = editor.state.doc.textBetween(safeStart, safeEnd, ' ');
-    setSelectionRange({ start: safeStart, end: safeEnd, text: selectedText });
-  }, [editor]);
-
-  // Navigate to issue and highlight it
-  const handleNavigateToIssue = useCallback((start: number, end: number) => {
-    setActiveHighlight({ start, end, type: 'issue' });
-    setSelection(start, end);
-  }, [setSelection]);
-
-  // Scroll editor to position
-  const scrollToPosition = useCallback((position: number) => {
-    if (!editor) return;
-    editor.chain().focus().setTextSelection(position).run();
-  }, [editor]);
-
-  // Get current editor context for agent
-  const getEditorContext = useCallback((): EditorContextType => ({
+  // Selection State & Navigation
+  const {
+    selectionRange,
+    selectionPos,
     cursorPosition,
-    selection: selectionRange,
-    totalLength: currentText.length
-  }), [cursorPosition, selectionRange, currentText.length]);
+    setSelection,
+    setSelectionState,
+    clearSelection,
+    activeHighlight,
+    handleNavigateToIssue,
+    scrollToPosition,
+    getEditorContext,
+  } = useEditorSelection({ editor, currentText });
 
   // Quill AI 3.0: Branching State
-  const [branches, setBranches] = useState<Branch[]>(activeChapter?.branches || []);
-  const [activeBranchId, setActiveBranchId] = useState<string | null>(activeChapter?.activeBranchId || null);
-  const [mainContent, setMainContent] = useState(activeChapter?.content || '');
-
-  // Sync branches with chapter changes
-  React.useEffect(() => {
-    if (activeChapter) {
-      setBranches(activeChapter.branches || []);
-      setActiveBranchId(activeChapter.activeBranchId || null);
-      setMainContent(activeChapter.content || '');
-    }
-  }, [activeChapterId, activeChapter]);
-
-  const isOnMain = !activeBranchId;
-
-  const createBranch = useCallback((name: string) => {
-    const newBranch: Branch = {
-      id: crypto.randomUUID(),
-      name,
-      content: currentText,
-      createdAt: Date.now(),
-    };
-    setBranches(prev => [...prev, newBranch]);
-    // TODO: Persist to store
-  }, [currentText]);
-
-  const switchBranch = useCallback((branchId: string | null) => {
-    if (branchId === null) {
-      // Switch to main
-      setActiveBranchId(null);
-      updateText(mainContent);
-    } else {
-      const branch = branches.find(b => b.id === branchId);
-      if (branch) {
-        setActiveBranchId(branchId);
-        updateText(branch.content);
-      }
-    }
-  }, [branches, mainContent, updateText]);
-
-  const mergeBranch = useCallback((branchId: string) => {
-    const branch = branches.find(b => b.id === branchId);
-    if (branch) {
-      setMainContent(branch.content);
-      updateText(branch.content);
-      setActiveBranchId(null);
-    }
-  }, [branches, updateText]);
-
-  const deleteBranch = useCallback((branchId: string) => {
-    if (activeBranchId === branchId) {
-      setActiveBranchId(null);
-      updateText(mainContent);
-    }
-    setBranches(prev => prev.filter(b => b.id !== branchId));
-  }, [activeBranchId, mainContent, updateText]);
-
-  const renameBranch = useCallback((branchId: string, newName: string) => {
-    setBranches(prev => prev.map(b => 
-      b.id === branchId ? { ...b, name: newName } : b
-    ));
-  }, []);
+  const {
+    branches,
+    activeBranchId,
+    isOnMain,
+    createBranch,
+    switchBranch,
+    mergeBranch,
+    deleteBranch,
+    renameBranch,
+  } = useEditorBranching(activeChapter, currentText, updateText);
 
   // Quill AI 3.0: Inline Comments State
-  const [inlineComments, setInlineComments] = useState<InlineComment[]>(activeChapter?.comments || []);
-
-  React.useEffect(() => {
-    if (activeChapter) {
-      setInlineComments(activeChapter.comments || []);
-    }
-  }, [activeChapterId, activeChapter]);
+  const {
+    inlineComments,
+    visibleComments,
+    setInlineComments,
+    dismissComment,
+    clearComments,
+  } = useEditorComments(activeChapter);
 
   // Quill AI 3.0: Zen Mode State
   const [isZenMode, setIsZenMode] = useState(false);
   const toggleZenMode = useCallback(() => setIsZenMode(prev => !prev), []);
-
-  const dismissComment = useCallback((commentId: string) => {
-    setInlineComments(prev => prev.map(c => 
-      c.id === commentId ? { ...c, dismissed: true } : c
-    ));
-  }, []);
-
-  const clearComments = useCallback(() => {
-    setInlineComments([]);
-  }, []);
 
   const value: EditorContextValue = {
     // Editor Instance
@@ -304,6 +201,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     renameBranch,
     // Inline Comments
     inlineComments,
+    visibleComments,
     setInlineComments,
     dismissComment,
     clearComments,
