@@ -6,6 +6,8 @@ import { ai } from "./client";
 import { REWRITE_SYSTEM_INSTRUCTION, CONTEXTUAL_HELP_SYSTEM_INSTRUCTION, AGENT_SYSTEM_INSTRUCTION } from "./prompts";
 import { safeParseJson, validators } from "./resilientParser";
 import { Persona, buildPersonaInstruction } from "../../types/personas";
+import { CritiqueIntensity, DEFAULT_CRITIQUE_INTENSITY } from "../../types/critiqueSettings";
+import { getIntensityModifier } from "./critiquePrompts";
 
 export const agentTools: FunctionDeclaration[] = [
   {
@@ -111,7 +113,13 @@ export const getContextualHelp = async (text: string, type: 'Explain' | 'Thesaur
   };
 };
 
-export const createAgentSession = (lore?: Lore, analysis?: AnalysisResult, fullManuscriptContext?: string, persona?: Persona) => {
+export const createAgentSession = (
+  lore?: Lore, 
+  analysis?: AnalysisResult, 
+  fullManuscriptContext?: string, 
+  persona?: Persona,
+  intensity: CritiqueIntensity = DEFAULT_CRITIQUE_INTENSITY
+) => {
   let loreContext = "";
   if (lore) {
     const chars = lore.characters.map(c => `
@@ -154,7 +162,10 @@ export const createAgentSession = (lore?: Lore, analysis?: AnalysisResult, fullM
     `;
   }
 
+  const intensityModifier = getIntensityModifier(intensity);
+
   let systemInstruction = AGENT_SYSTEM_INSTRUCTION
+    .replace('{{INTENSITY_MODIFIER}}', intensityModifier)
     .replace('{{LORE_CONTEXT}}', loreContext)
     .replace('{{ANALYSIS_CONTEXT}}', analysisContext)
     .replace('{{FULL_MANUSCRIPT}}', fullManuscriptContext || "No manuscript content loaded.");

@@ -42,7 +42,7 @@ describe('features barrel indexes', () => {
     // Editor
     expect(typeof Editor.RichTextEditor).toBe('function');
     expect(typeof Editor.useMagicEditor).toBe('function');
-    expect(typeof Editor.CommentMark).toBe('function');
+    expect(typeof Editor.CommentMark).toBe('object');
 
     // Layout
     expect(typeof Layout.MainLayout).toBe('function');

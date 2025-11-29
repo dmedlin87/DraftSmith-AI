@@ -27,3 +27,6 @@ export * from './agent';
 
 // Layout (application layouts)
 export * from './layout';
+
+// Settings (user preferences, critique intensity)
+export * from './settings';

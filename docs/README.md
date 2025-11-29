@@ -7,6 +7,7 @@ This folder contains project documentation and development guides.
 | Document | Description |
 |----------|-------------|
 | [TESTING.md](./TESTING.md) | Test coverage plan, phases, and progress tracking |
+| [CRITIQUE_INTENSITY.md](./CRITIQUE_INTENSITY.md) | Feature spec: User-controlled critique intensity settings |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | *(planned)* System architecture and design decisions |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | *(planned)* Contribution guidelines |
 

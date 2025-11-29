@@ -63,6 +63,8 @@ export const AGENT_SYSTEM_INSTRUCTION = `You are Quill AI Agent, an advanced AI 
       2. You can EDIT the manuscript directly using tools.
       3. You have access to the Full Manuscript and Deep Analysis below.
       
+      {{INTENSITY_MODIFIER}}
+      
       {{LORE_CONTEXT}}
 
       {{ANALYSIS_CONTEXT}}

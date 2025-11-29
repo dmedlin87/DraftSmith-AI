@@ -18,6 +18,8 @@ import { Chat } from "@google/genai";
 import { Lore, Chapter } from '@/types/schema';
 import { Persona, DEFAULT_PERSONAS } from '@/types/personas';
 import { PersonaSelector } from './PersonaSelector';
+import { CritiqueIntensitySelector } from '@/features/settings';
+import { useSettingsStore } from '@/features/settings';
 
 interface ChatInterfaceProps {
   editorContext: EditorContext;
@@ -61,7 +63,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
        return `[CHAPTER: ${c.title}]${isActive ? " (ACTIVE - You can edit this)" : " (READ ONLY - Request user to switch)"}\n${c.content}\n`;
     }).join('\n-------------------\n');
 
-    chatRef.current = createAgentSession(lore, analysis || undefined, fullManuscript, personaRef.current);
+    const intensity = useSettingsStore.getState().critiqueIntensity;
+    chatRef.current = createAgentSession(lore, analysis || undefined, fullManuscript, personaRef.current, intensity);
     
     // Initialize with instructions but no visible message
     const init = async () => {
@@ -227,9 +230,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             onSelectPersona={handlePersonaChange}
             compact
           />
-          <div className="flex gap-2 text-xs">
-            {lore && <span title="Lore Bible Active" className="text-indigo-600 font-bold">📖</span>}
-            {analysis && <span title="Deep Analysis Context Active" className="text-purple-600 font-bold">🧠</span>}
+          <div className="flex items-center gap-3">
+            <CritiqueIntensitySelector compact />
+            <div className="flex gap-2 text-xs">
+              {lore && <span title="Lore Bible Active" className="text-indigo-600 font-bold">📖</span>}
+              {analysis && <span title="Deep Analysis Context Active" className="text-purple-600 font-bold">🧠</span>}
+            </div>
           </div>
         </div>
         {/* Context Row */}
