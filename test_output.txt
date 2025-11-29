@@ -1,0 +1,72 @@
+
+> quill-ai@0.0.0 test:run
+> vitest run tests/components/RichTextEditor.test.tsx Comment Interactions
+
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/dmedl/Projects/Quill AI[39m
+
+ [33mΓ¥»[39m tests/components/RichTextEditor.test.tsx [2m ([22m[2m30 tests[22m [2m|[22m [31m2 failed[39m[2m)[22m[33m 1340[2mms[22m[39m
+[31m   [33mΓ¥»[31m tests/components/RichTextEditor.test.tsx[2m > [22mRichTextEditor[2m > [22mComment Decorations[2m > [22mcalls onCommentClick when clicking on comment decoration[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ ObjectContaining{ΓÇª}, ΓÇª(1) ][90m
+
+Received: 
+
+[31m[90m
+
+Number of calls: [1m0[22m
+[31m[39m
+[31m   [33mΓ¥»[31m tests/components/RichTextEditor.test.tsx[2m > [22mRichTextEditor[2m > [22mComment Interactions[2m > [22mcalls onCommentClick when comment decoration is clicked[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ ObjectContaining{ΓÇª}, ΓÇª(1) ][90m
+
+Received: 
+
+[31m[90m
+
+Number of calls: [1m0[22m
+[31m[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 2 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  tests/components/RichTextEditor.test.tsx > RichTextEditor > Comment Decorations > calls onCommentClick when clicking on comment decoration
+AssertionError: expected "spy" to be called with arguments: [ ObjectContaining{ΓÇª}, ΓÇª(1) ]
+
+Received: 
+
+
+
+Number of calls: 0
+
+ Γ¥» tests/components/RichTextEditor.test.tsx:614:30
+    612|       }
+    613| 
+    614|       expect(onCommentClick).toHaveBeenCalledWith(
+       |                              ^
+    615|         expect.objectContaining({ id: 'click-comment' }),
+    616|         expect.objectContaining({ top: 128, left: 50 })
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/2]ΓÄ»
+
+ FAIL  tests/components/RichTextEditor.test.tsx > RichTextEditor > Comment Interactions > calls onCommentClick when comment decoration is clicked
+AssertionError: expected "spy" to be called with arguments: [ ObjectContaining{ΓÇª}, ΓÇª(1) ]
+
+Received: 
+
+
+
+Number of calls: 0
+
+ Γ¥» tests/components/RichTextEditor.test.tsx:735:30
+    733|       }
+    734| 
+    735|       expect(onCommentClick).toHaveBeenCalledWith(
+       |                              ^
+    736|         expect.objectContaining({ id: comment.id }),
+    737|         expect.objectContaining({ top: 128, left: 50 }) // bottom (120ΓÇª
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/2]ΓÄ»
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m28 passed[39m[22m[90m (30)[39m
+[2m   Start at [22m 15:58:24
+[2m   Duration [22m 3.43s[2m (transform 78ms, setup 169ms, collect 543ms, tests 1.34s, environment 934ms, prepare 198ms)[22m
+

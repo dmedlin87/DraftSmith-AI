@@ -1,0 +1,128 @@
+
+> quill-ai@0.0.0 test:run
+> vitest run tests/components/RichTextEditor.test.tsx Comment Interactions
+
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/dmedl/Projects/Quill AI[39m
+
+[90mstdout[2m | tests/components/RichTextEditor.test.tsx[2m > [22m[2mRichTextEditor[2m > [22m[2mComment Decorations[2m > [22m[2mcalls onCommentClick when clicking on comment decoration[22m[39m
+Plugins found: [
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [32m'markdownClipboard$15'[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [32m'history$'[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [32m'codeBlockVSCodeHandler$15'[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [32m'tabindex$15'[39m,
+  [90mundefined[39m,
+  [32m'clearDocument$15'[39m,
+  [90mundefined[39m,
+  [32m'focusEvents$16'[39m,
+  [90mundefined[39m,
+  [32m'editable$15'[39m,
+  [90mundefined[39m,
+  [90mundefined[39m,
+  [32m'clipboardTextSerializer$15'[39m,
+  [90mundefined[39m,
+  [32m'analysis-decorations$32'[39m,
+  [32m'comment-decorations$31'[39m
+]
+Comment plugin found: [33mfalse[39m
+handleClick not found on plugin
+
+ [33mΓ¥»[39m tests/components/RichTextEditor.test.tsx [2m ([22m[2m30 tests[22m [2m|[22m [31m2 failed[39m[2m)[22m[33m 1614[2mms[22m[39m
+[31m   [33mΓ¥»[31m tests/components/RichTextEditor.test.tsx[2m > [22mRichTextEditor[2m > [22mComment Decorations[2m > [22mcalls onCommentClick when clicking on comment decoration[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ ObjectContaining{ΓÇª}, ΓÇª(1) ][90m
+
+Received: 
+
+[31m[90m
+
+Number of calls: [1m0[22m
+[31m[39m
+[31m   [33mΓ¥»[31m tests/components/RichTextEditor.test.tsx[2m > [22mRichTextEditor[2m > [22mComment Interactions[2m > [22mcalls onCommentClick when comment decoration is clicked[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ ObjectContaining{ΓÇª}, ΓÇª(1) ][90m
+
+Received: 
+
+[31m[90m
+
+Number of calls: [1m0[22m
+[31m[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 2 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  tests/components/RichTextEditor.test.tsx > RichTextEditor > Comment Decorations > calls onCommentClick when clicking on comment decoration
+AssertionError: expected "spy" to be called with arguments: [ ObjectContaining{ΓÇª}, ΓÇª(1) ]
+
+Received: 
+
+
+
+Number of calls: 0
+
+ Γ¥» tests/components/RichTextEditor.test.tsx:621:30
+    619|       }
+    620| 
+    621|       expect(onCommentClick).toHaveBeenCalledWith(
+       |                              ^
+    622|         expect.objectContaining({ id: 'click-comment' }),
+    623|         expect.objectContaining({ top: 128, left: 50 })
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/2]ΓÄ»
+
+ FAIL  tests/components/RichTextEditor.test.tsx > RichTextEditor > Comment Interactions > calls onCommentClick when comment decoration is clicked
+AssertionError: expected "spy" to be called with arguments: [ ObjectContaining{ΓÇª}, ΓÇª(1) ]
+
+Received: 
+
+
+
+Number of calls: 0
+
+ Γ¥» tests/components/RichTextEditor.test.tsx:742:30
+    740|       }
+    741| 
+    742|       expect(onCommentClick).toHaveBeenCalledWith(
+       |                              ^
+    743|         expect.objectContaining({ id: comment.id }),
+    744|         expect.objectContaining({ top: 128, left: 50 }) // bottom (120ΓÇª
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/2]ΓÄ»
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m28 passed[39m[22m[90m (30)[39m
+[2m   Start at [22m 15:59:11
+[2m   Duration [22m 3.63s[2m (transform 75ms, setup 165ms, collect 522ms, tests 1.61s, environment 893ms, prepare 182ms)[22m
+

@@ -7,7 +7,6 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { CommentMark } from '../extensions/CommentMark';
 import type { AnyExtension } from '@tiptap/core';
-import { CommentCard } from './CommentCard';
 import { InlineComment } from '@/types/schema';
 
 interface HighlightItem {
@@ -48,7 +47,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const editorContainerRef = useRef<HTMLDivElement>(null);
-  const [activeComment, setActiveComment] = useState<(InlineComment & { position: { top: number; left: number } }) | null>(null);
 
   const AnalysisDecorations = useMemo(() => {
     return new Plugin({
@@ -72,20 +70,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       }
     });
   }, [analysisHighlights]);
-
-  // Handle comment click from decoration
-  const handleCommentClick = useCallback((commentId: string, event: MouseEvent) => {
-    const comment = inlineComments.find(c => c.id === commentId);
-    if (comment && onCommentClick) {
-      const rect = (event.target as HTMLElement).getBoundingClientRect();
-      onCommentClick(comment, { top: rect.bottom + 8, left: rect.left });
-    }
-    // Also show inline card
-    if (comment) {
-      const rect = (event.target as HTMLElement).getBoundingClientRect();
-      setActiveComment({ ...comment, position: { top: rect.bottom + 8, left: rect.left } });
-    }
-  }, [inlineComments, onCommentClick]);
 
   // Comment decorations plugin
   const CommentDecorations = useMemo(() => {
@@ -124,9 +108,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           const commentId = target.getAttribute('data-comment-id');
           if (commentId) {
             const comment = inlineComments.find(c => c.id === commentId);
-            if (comment) {
+            if (comment && onCommentClick) {
               const rect = target.getBoundingClientRect();
-              setActiveComment({ ...comment, position: { top: rect.bottom + 8, left: rect.left } });
+              onCommentClick(comment, { top: rect.bottom + 8, left: rect.left });
               return true;
             }
           }
@@ -134,7 +118,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         }
       }
     });
-  }, [inlineComments]);
+  }, [inlineComments, onCommentClick]);
 
   const editor = useEditor({
     extensions: [
@@ -221,22 +205,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     setEditorRef(editor);
   }, [editor, setEditorRef]);
 
-  const handleCloseComment = useCallback(() => {
-    setActiveComment(null);
-  }, []);
-
-  const handleFixWithAgent = useCallback((issue: string, suggestion: string, quote?: string) => {
-    setActiveComment(null);
-    onFixWithAgent?.(issue, suggestion, quote);
-  }, [onFixWithAgent]);
-
-  const handleDismissComment = useCallback((commentId: string) => {
-    setActiveComment(null);
-    onDismissComment?.(commentId);
-  }, [onDismissComment]);
-
   return (
-    <>
     <div 
       ref={editorContainerRef}
       className={`bg-[var(--parchment-50)] min-h-[80vh] rounded-sm relative overflow-hidden transition-all duration-700 ease-out-expo animate-fade-in ${
@@ -249,31 +218,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <div 
           className="absolute inset-0 pointer-events-none opacity-[0.03]"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3Cfilter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`
           }}
         />
         <div className="relative z-10 p-16">
            <EditorContent editor={editor} />
         </div>
     </div>
-
-    {/* Floating Comment Card */}
-    {activeComment && (
-      <CommentCard
-        comment={{
-          commentId: activeComment.id,
-          type: activeComment.type,
-          issue: activeComment.issue,
-          suggestion: activeComment.suggestion,
-          severity: activeComment.severity,
-          quote: activeComment.quote,
-        }}
-        position={activeComment.position}
-        onClose={handleCloseComment}
-        onFixWithAgent={handleFixWithAgent}
-        onDismiss={handleDismissComment}
-      />
-    )}
-    </>
   );
 };

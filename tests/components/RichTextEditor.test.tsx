@@ -570,7 +570,7 @@ describe('RichTextEditor', () => {
       expect(editor).toBeDefined();
     });
 
-    it('opens CommentCard when clicking on comment decoration', async () => {
+    it('calls onCommentClick when clicking on comment decoration', async () => {
       const comment = createComment({ id: 'click-comment' });
 
       const { container } = render(
@@ -598,7 +598,7 @@ describe('RichTextEditor', () => {
 
       // Find the CommentDecorations plugin and call its handleClick
       const commentPlugin = editor.state.plugins.find((p: any) => 
-        p.spec?.key?.key === 'comment-decorations'
+        p.spec?.key?.key?.startsWith('comment-decorations')
       );
 
       if (commentPlugin?.props?.handleClick) {
@@ -611,7 +611,10 @@ describe('RichTextEditor', () => {
         });
       }
 
-      // The CommentCard should appear (though exact rendering depends on internal state)
+      expect(onCommentClick).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'click-comment' }),
+        expect.objectContaining({ top: 128, left: 50 })
+      );
     });
 
     it('does not show CommentCard when clicking non-comment element', async () => {
@@ -654,8 +657,12 @@ describe('RichTextEditor', () => {
   // CommentCard Interaction Tests
   // ====================
 
-  describe('CommentCard Interactions', () => {
-    const createComment = (): InlineComment => ({
+  // ====================
+  // Comment Interaction Tests
+  // ====================
+
+  describe('Comment Interactions', () => {
+    const createComment = (overrides: Partial<InlineComment> = {}): InlineComment => ({
       id: 'card-comment',
       type: 'prose',
       issue: 'Prose issue',
@@ -666,9 +673,10 @@ describe('RichTextEditor', () => {
       endIndex: 10,
       dismissed: false,
       createdAt: Date.now(),
+      ...overrides,
     });
 
-    it('shows CommentCard when comment decoration is clicked', async () => {
+    it('calls onCommentClick when comment decoration is clicked', async () => {
       const comment = createComment();
 
       const { container } = render(
@@ -697,87 +705,37 @@ describe('RichTextEditor', () => {
       // Click the decoration using the click handler
       const commentHighlight = container.querySelector('.inline-comment-highlight');
       if (commentHighlight) {
+        // Mock getBoundingClientRect for the highlight
+        commentHighlight.getBoundingClientRect = vi.fn(() => ({
+          top: 100, left: 50, bottom: 120, right: 100,
+          width: 50, height: 20, x: 50, y: 100, toJSON: () => ({}),
+        }));
+
         act(() => {
-          fireEvent.click(commentHighlight);
+          // We need to simulate the plugin's handleClick logic
+          // Since we can't easily trigger the ProseMirror event directly in this test setup without more complex mocking,
+          // we'll manually trigger the plugin's handler if accessible, or rely on the DOM event if the plugin attaches one.
+          // However, Tiptap plugins handle events internally.
+          // Let's try to find the plugin and call handleClick directly as done in previous tests.
+          
+          const commentPlugin = editor.state.plugins.find((p: any) => 
+            p.spec?.key?.key?.startsWith('comment-decorations')
+          );
+
+          if (commentPlugin?.props?.handleClick) {
+             commentPlugin.props.handleClick(
+              editor.view,
+              1,
+              { target: commentHighlight } as unknown as MouseEvent
+            );
+          }
         });
       }
 
-      // The CommentCard appearance depends on internal state being updated
-      // through the plugin's handleClick, which uses a closure in test env
-    });
-
-    it('handles Fix with Agent button click', async () => {
-      const comment = createComment();
-
-      render(
-        <RichTextEditor
-          content="Test content"
-          onUpdate={onUpdate}
-          onSelectionChange={onSelectionChange}
-          setEditorRef={setEditorRef}
-          activeHighlight={null}
-          inlineComments={[comment]}
-          onFixWithAgent={onFixWithAgent}
-          onDismissComment={onDismissComment}
-        />
+      expect(onCommentClick).toHaveBeenCalledWith(
+        expect.objectContaining({ id: comment.id }),
+        expect.objectContaining({ top: 128, left: 50 }) // bottom (120) + 8 = 128
       );
-
-      const editor = await getEditorInstance();
-      setupEditorMocks(editor);
-
-      // Click on the comment decoration
-      await waitFor(() => {
-        const commentHighlight = document.querySelector('[data-comment-id="card-comment"]');
-        if (commentHighlight) {
-          fireEvent.click(commentHighlight);
-        }
-      });
-
-      // Wait and click the Fix button
-      await waitFor(() => {
-        const fixButton = screen.queryByText(/Fix with Agent/);
-        if (fixButton) {
-          fireEvent.click(fixButton);
-          expect(onFixWithAgent).toHaveBeenCalled();
-        }
-      }, { timeout: 2000 });
-    });
-
-    it('handles Dismiss button click', async () => {
-      const comment = createComment();
-
-      render(
-        <RichTextEditor
-          content="Test content"
-          onUpdate={onUpdate}
-          onSelectionChange={onSelectionChange}
-          setEditorRef={setEditorRef}
-          activeHighlight={null}
-          inlineComments={[comment]}
-          onFixWithAgent={onFixWithAgent}
-          onDismissComment={onDismissComment}
-        />
-      );
-
-      const editor = await getEditorInstance();
-      setupEditorMocks(editor);
-
-      // Click on the comment decoration
-      await waitFor(() => {
-        const commentHighlight = document.querySelector('[data-comment-id="card-comment"]');
-        if (commentHighlight) {
-          fireEvent.click(commentHighlight);
-        }
-      });
-
-      // Wait and click the Dismiss button
-      await waitFor(() => {
-        const dismissButton = screen.queryByText('Dismiss');
-        if (dismissButton) {
-          fireEvent.click(dismissButton);
-          expect(onDismissComment).toHaveBeenCalled();
-        }
-      }, { timeout: 2000 });
     });
 
     it('handles plugin handleClick returning true for comment clicks', async () => {
@@ -800,7 +758,7 @@ describe('RichTextEditor', () => {
 
       // Find and invoke the plugin's handleClick directly
       const commentPlugin = editor.state.plugins.find((p: any) => 
-        p.spec?.key?.key === 'comment-decorations'
+        p.spec?.key?.key?.startsWith('comment-decorations')
       );
 
       if (commentPlugin?.props?.handleClick) {
