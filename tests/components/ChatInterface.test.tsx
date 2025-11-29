@@ -1,6 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 
 const { mockCreateAgentSession, mockSendMessage } = vi.hoisted(() => {
@@ -61,9 +60,9 @@ describe('ChatInterface', () => {
     const input = await screen.findByPlaceholderText(/Type \/ to use tools/i);
     const sendButton = screen.getAllByRole('button').at(-1);
 
-    await userEvent.type(input, 'Hello agent');
+    fireEvent.change(input, { target: { value: 'Hello agent' } });
     if (sendButton) {
-      await userEvent.click(sendButton);
+      fireEvent.click(sendButton);
     }
 
     await waitFor(() => {
