@@ -20,6 +20,9 @@ export { useAutoResize } from './hooks/useAutoResize';
 export { useBranching, type UseBranchingOptions, type UseBranchingResult } from './hooks/useBranching';
 export { useInlineComments, type UseInlineCommentsOptions, type UseInlineCommentsResult } from './hooks/useInlineComments';
 export { useDocumentHistory } from './hooks/useDocumentHistory';
+export { useEditorSelection } from './hooks/useEditorSelection';
+export { useEditorComments } from './hooks/useEditorComments';
+export { useEditorBranching } from './hooks/useEditorBranching';
 export { 
   useChunkIndex, 
   useChunkIndexSync,

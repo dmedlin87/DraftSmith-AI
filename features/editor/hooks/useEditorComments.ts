@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Chapter, InlineComment } from '@/types/schema';
-import { useSettingsStore } from '@/features/settings/store/useSettingsStore';
+import { useSettingsStore } from '@/features/settings';
 
 interface UseEditorCommentsResult {
   inlineComments: InlineComment[];

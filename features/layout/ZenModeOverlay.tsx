@@ -16,7 +16,11 @@ export const ZenModeOverlay: React.FC<ZenModeOverlayProps> = ({
   isZenMode,
   toggleZenMode,
 }) => {
-  const { isExitZenHovered, setExitZenHovered, setHeaderHovered } = useLayoutStore();
+  const { isExitZenHovered, setExitZenHovered, setHeaderHovered } = useLayoutStore((state) => ({
+    isExitZenHovered: state.isExitZenHovered,
+    setExitZenHovered: state.setExitZenHovered,
+    setHeaderHovered: state.setHeaderHovered,
+  }));
 
   if (!isZenMode) return null;
 

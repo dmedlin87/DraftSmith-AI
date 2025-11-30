@@ -2,6 +2,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { useMagicEditor } from '@/features/editor/hooks/useMagicEditor';
 import { rewriteText, getContextualHelp } from '@/services/gemini/agent';
+import { ModelConfig } from '@/config/models';
 
 const trackUsage = vi.fn();
 
@@ -50,7 +51,7 @@ describe('useMagicEditor', () => {
       expect(result.current.state.isMagicLoading).toBe(false);
     });
 
-    expect(trackUsage).toHaveBeenCalledWith({ promptTokenCount: 5, totalTokenCount: 10 });
+    expect(trackUsage).toHaveBeenCalledWith({ promptTokenCount: 5, totalTokenCount: 10 }, ModelConfig.agent);
   });
 
   it('applies variation to selection and commits update', async () => {
@@ -132,7 +133,7 @@ describe('useMagicEditor', () => {
       expect(result.current.state.isMagicLoading).toBe(false);
     });
 
-    expect(trackUsage).toHaveBeenCalledWith({ promptTokenCount: 3, totalTokenCount: 5 });
+    expect(trackUsage).toHaveBeenCalledWith({ promptTokenCount: 3, totalTokenCount: 5 }, ModelConfig.agent);
   });
 
   it('does not trigger help for empty or whitespace-only selection', async () => {

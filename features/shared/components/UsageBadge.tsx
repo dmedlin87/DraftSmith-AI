@@ -1,6 +1,6 @@
 import React from 'react';
 import { useUsage } from '../context/UsageContext';
-import { useSettingsStore } from '@/features/settings/store/useSettingsStore';
+import { useSettingsStore } from '@/features/settings';
 import { AccessibleTooltip } from './AccessibleTooltip';
 
 /**

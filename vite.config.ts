@@ -26,7 +26,17 @@ export default defineConfig(({ mode }) => {
         setupFiles: ['./tests/setup.ts'],
         include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
         coverage: {
-          reporter: ['text', 'json', 'html'],
+          reporter: ['text', 'json', 'json-summary', 'html'],
+          thresholds: {
+            statements: 80,
+            branches: 75,
+            functions: 80,
+            lines: 80,
+          },
+        },
+        reporters: ['default', 'json'],
+        outputFile: {
+          json: 'coverage/vitest-report.json',
         },
       },
     };

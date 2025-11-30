@@ -43,7 +43,6 @@ const TITLES = ['mr', 'mrs', 'ms', 'miss', 'dr', 'doctor', 'professor', 'prof',
   'general', 'colonel', 'major', 'sergeant', 'officer', 'detective', 'agent',
   'father', 'mother', 'brother', 'sister', 'uncle', 'aunt', 'grandpa', 'grandma'];
 
-// Location indicators
 const LOCATION_PREPOSITIONS = ['in', 'at', 'inside', 'outside', 'within', 'near', 
   'by', 'behind', 'before', 'above', 'below', 'beneath', 'beside', 'between',
   'through', 'across', 'around', 'toward', 'towards', 'into', 'onto', 'upon'];
@@ -57,9 +56,8 @@ const POSSESSION_PATTERNS = [
   /(\w+)\s+drew\s+(?:a|an|the|his|her)\s+(\w+)/g,
 ];
 
-// Relationship verb patterns
 const RELATIONSHIP_PATTERNS: Array<{ pattern: RegExp; type: RelationshipType }> = [
-  { pattern: /(\w+)\s+(?:loved|kissed|embraced|married)\s+(\w+)/gi, type: 'related_to' },
+  { pattern: /(\w+)\s+(?:loved|loves|kissed|embraced|married)\s+(\w+)/gi, type: 'related_to' },
   { pattern: /(\w+)\s+(?:attacked|fought|killed|struck|hit)\s+(\w+)/gi, type: 'opposes' },
   { pattern: /(\w+)\s+(?:helped|saved|protected|defended)\s+(\w+)/gi, type: 'allied_with' },
   { pattern: /(\w+)\s+and\s+(\w+)\s+(?:worked|traveled|walked|ran)\s+together/gi, type: 'allied_with' },
@@ -88,6 +86,40 @@ const isValidEntityName = (name: string): boolean => {
 
 const isProperNoun = (word: string): boolean => {
   return /^[A-Z][a-z]+$/.test(word);
+};
+
+// Helper to compute a canonical key for an entity name, used for consolidation.
+// This prefers grouping by surname when the bare surname appears in the text,
+// while avoiding over-merging different characters who simply share a surname.
+const getCanonicalEntityKey = (
+  rawName: string,
+  surnameMap: Map<string, { hasBare: boolean }>,
+): string => {
+  const lower = rawName.toLowerCase();
+  const tokens = lower.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return lower;
+
+  const nonTitleTokens = tokens.filter((token, index) => {
+    if (index === 0 && TITLES.includes(token)) return false;
+    return true;
+  });
+
+  if (nonTitleTokens.length === 0) {
+    return lower;
+  }
+
+  const surname = nonTitleTokens[nonTitleTokens.length - 1];
+  const info = surnameMap.get(surname);
+
+  // If the bare surname appears somewhere in the text, consolidate all
+  // references that share this surname under a single key.
+  if (info?.hasBare) {
+    return surname;
+  }
+
+  // Otherwise, keep the full non-title name as the key so distinct characters
+  // with the same surname remain separate.
+  return nonTitleTokens.join(' ');
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,9 +206,8 @@ const extractCharactersFromText = (text: string): RawEntity[] => {
 const extractLocations = (text: string): RawEntity[] => {
   const entities: RawEntity[] = [];
   
-  // Pattern: Preposition + "the" + Location
   for (const prep of LOCATION_PREPOSITIONS) {
-    const pattern = new RegExp(`\\b${prep}\\s+(?:the\\s+)?([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*)\\b`, 'g');
+    const pattern = new RegExp(`\\b${prep}\\s+(?:the\\s+)?([A-Za-z][A-Za-z]*(?:\\s+[A-Za-z][A-Za-z]*)*)\\b`, 'g');
     let match;
     while ((match = pattern.exec(text)) !== null) {
       const name = normalizeEntityName(match[1]);
@@ -213,6 +244,20 @@ const extractLocations = (text: string): RawEntity[] => {
     }
   }
   
+  const explicitPattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b/g;
+  let explicitMatch;
+  while ((explicitMatch = explicitPattern.exec(text)) !== null) {
+    const name = normalizeEntityName(explicitMatch[1]);
+    if (isValidEntityName(name) && !entities.some(e => e.name.toLowerCase() === name.toLowerCase())) {
+      entities.push({
+        name,
+        type: 'location',
+        offset: explicitMatch.index,
+        context: text.slice(Math.max(0, explicitMatch.index - 30), explicitMatch.index + 50),
+      });
+    }
+  }
+
   return entities;
 };
 
@@ -256,9 +301,33 @@ const extractObjects = (text: string): RawEntity[] => {
 const consolidateEntities = (rawEntities: RawEntity[], chapterId: string): EntityNode[] => {
   const entityMap = new Map<string, EntityNode>();
   
+  // First pass: build a map of surnames and whether they appear alone
+  const surnameMap = new Map<string, { hasBare: boolean }>();
   for (const raw of rawEntities) {
-    const key = raw.name.toLowerCase();
-    
+    const lower = raw.name.toLowerCase();
+    const tokens = lower.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) continue;
+
+    const nonTitleTokens = tokens.filter((token, index) => {
+      if (index === 0 && TITLES.includes(token)) return false;
+      return true;
+    });
+
+    if (nonTitleTokens.length === 0) continue;
+
+    const surname = nonTitleTokens[nonTitleTokens.length - 1];
+    const isBare = nonTitleTokens.length === 1;
+    const existing = surnameMap.get(surname) ?? { hasBare: false };
+    if (isBare) {
+      existing.hasBare = true;
+    }
+    surnameMap.set(surname, existing);
+  }
+
+  // Second pass: consolidate entities using canonical keys
+  for (const raw of rawEntities) {
+    const key = getCanonicalEntityKey(raw.name, surnameMap);
+
     if (entityMap.has(key)) {
       // Update existing entity
       const existing = entityMap.get(key)!;
@@ -278,7 +347,7 @@ const consolidateEntities = (rawEntities: RawEntity[], chapterId: string): Entit
       });
     }
   }
-  
+
   // Sort by mention count (more mentioned = more important)
   return Array.from(entityMap.values())
     .sort((a, b) => b.mentionCount - a.mentionCount);
@@ -296,27 +365,42 @@ const detectRelationships = (
 ): EntityEdge[] => {
   const edges: EntityEdge[] = [];
   const edgeMap = new Map<string, EntityEdge>();
-  
-  const entityNames = new Set(entities.map(e => e.name.toLowerCase()));
-  
+
+  // Map from lowercase name/alias to entity node for fast lookup and
+  // to allow explicit relationship patterns to introduce new entities when
+  // they were not previously detected by the character extractor.
+  const nameToNode = new Map<string, EntityNode>();
+  for (const entity of entities) {
+    const nameKey = entity.name.toLowerCase();
+    if (!nameToNode.has(nameKey)) {
+      nameToNode.set(nameKey, entity);
+    }
+    for (const alias of entity.aliases) {
+      const aliasKey = alias.toLowerCase();
+      if (!nameToNode.has(aliasKey)) {
+        nameToNode.set(aliasKey, entity);
+      }
+    }
+  }
+
   // Method 1: Co-occurrence within paragraphs
   for (const para of paragraphs) {
     const paraText = text.slice(para.offset, para.offset + para.length).toLowerCase();
     const presentEntities: EntityNode[] = [];
-    
+
     for (const entity of entities) {
       if (paraText.includes(entity.name.toLowerCase())) {
         presentEntities.push(entity);
       }
     }
-    
+
     // Create edges between co-occurring entities
     for (let i = 0; i < presentEntities.length; i++) {
       for (let j = i + 1; j < presentEntities.length; j++) {
         const source = presentEntities[i];
         const target = presentEntities[j];
         const edgeKey = [source.id, target.id].sort().join('-');
-        
+
         if (edgeMap.has(edgeKey)) {
           const edge = edgeMap.get(edgeKey)!;
           edge.coOccurrences++;
@@ -338,45 +422,77 @@ const detectRelationships = (
       }
     }
   }
-  
+
   // Method 2: Explicit relationship patterns
   for (const { pattern, type } of RELATIONSHIP_PATTERNS) {
     let match;
     while ((match = pattern.exec(text)) !== null) {
-      const name1 = normalizeEntityName(match[1]).toLowerCase();
-      const name2 = normalizeEntityName(match[2]).toLowerCase();
-      
-      if (entityNames.has(name1) && entityNames.has(name2)) {
-        const entity1 = entities.find(e => e.name.toLowerCase() === name1);
-        const entity2 = entities.find(e => e.name.toLowerCase() === name2);
-        
-        if (entity1 && entity2) {
-          const edgeKey = [entity1.id, entity2.id].sort().join('-');
-          
-          if (edgeMap.has(edgeKey)) {
-            const edge = edgeMap.get(edgeKey)!;
-            // Upgrade relationship type if more specific
-            if (edge.type === 'interacts') {
-              edge.type = type;
-            }
-            edge.evidence.push(match[0]);
-          } else {
-            edgeMap.set(edgeKey, {
-              id: generateId(),
-              source: entity1.id,
-              target: entity2.id,
-              type,
-              coOccurrences: 1,
-              sentiment: type === 'opposes' ? -0.5 : 0.5,
-              chapters: [chapterId],
-              evidence: [match[0]],
-            });
-          }
+      const rawName1 = match[1];
+      const rawName2 = match[2];
+      if (!rawName1 || !rawName2) continue;
+
+      const name1 = normalizeEntityName(rawName1).toLowerCase();
+      const name2 = normalizeEntityName(rawName2).toLowerCase();
+
+      let entity1 = nameToNode.get(name1);
+      if (!entity1) {
+        entity1 = {
+          id: generateId(),
+          name: normalizeEntityName(rawName1),
+          type: 'character',
+          aliases: [],
+          firstMention: match.index,
+          mentionCount: 1,
+          mentions: [{ offset: match.index, chapterId }],
+          attributes: {},
+        };
+        entities.push(entity1);
+        nameToNode.set(name1, entity1);
+      }
+
+      let entity2 = nameToNode.get(name2);
+      if (!entity2) {
+        // Estimate second name offset as just after the first name; precise
+        // position is not critical for graph semantics.
+        const secondOffset = match.index + rawName1.length + 1;
+        entity2 = {
+          id: generateId(),
+          name: normalizeEntityName(rawName2),
+          type: 'character',
+          aliases: [],
+          firstMention: secondOffset,
+          mentionCount: 1,
+          mentions: [{ offset: secondOffset, chapterId }],
+          attributes: {},
+        };
+        entities.push(entity2);
+        nameToNode.set(name2, entity2);
+      }
+
+      const edgeKey = [entity1.id, entity2.id].sort().join('-');
+
+      if (edgeMap.has(edgeKey)) {
+        const edge = edgeMap.get(edgeKey)!;
+        // Upgrade relationship type if more specific
+        if (edge.type === 'interacts') {
+          edge.type = type;
         }
+        edge.evidence.push(match[0]);
+      } else {
+        edgeMap.set(edgeKey, {
+          id: generateId(),
+          source: entity1.id,
+          target: entity2.id,
+          type,
+          coOccurrences: 1,
+          sentiment: type === 'opposes' ? -0.5 : 0.5,
+          chapters: [chapterId],
+          evidence: [match[0]],
+        });
       }
     }
   }
-  
+
   return Array.from(edgeMap.values());
 };
 

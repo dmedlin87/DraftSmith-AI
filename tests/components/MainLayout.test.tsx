@@ -50,6 +50,14 @@ vi.mock('@/features/lore', () => ({
   LoreManager: () => <div data-testid="lore-manager">Lore</div>,
 }));
 
+vi.mock('@/features/layout/EditorHeader', () => ({
+  EditorHeader: ({ isZenMode }: { isZenMode: boolean }) => (
+    <div data-testid="editor-header" data-zen={isZenMode}>
+      Header
+    </div>
+  ),
+}));
+
 vi.mock('framer-motion', () => ({
   motion: {
     nav: ({ children, ...props }: React.HTMLAttributes<HTMLElement>) => <nav {...props}>{children}</nav>,
@@ -59,13 +67,20 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+vi.mock('@/features/shared/context/EditorContext', () => ({
+  useEditorState: vi.fn(),
+  useEditorActions: vi.fn(),
+}));
+
 import { MainLayout } from '@/features/layout/MainLayout';
 import { useProjectStore } from '@/features/project';
-import { useEditor, useEngine } from '@/features/shared';
+import { useEngine } from '@/features/shared';
+import { useEditorState, useEditorActions } from '@/features/shared/context/EditorContext';
 
 const mockUseProjectStore = useProjectStore as unknown as Mock;
-const mockUseEditor = useEditor as unknown as Mock;
 const mockUseEngine = useEngine as unknown as Mock;
+const mockUseEditorState = useEditorState as unknown as Mock;
+const mockUseEditorActions = useEditorActions as unknown as Mock;
 
 describe('MainLayout', () => {
   const mockEditor = { state: { selection: { from: 0 } } };
@@ -74,17 +89,32 @@ describe('MainLayout', () => {
   const setupMocks = (hasProject = true) => {
     mockUseProjectStore.mockReturnValue({
       currentProject: hasProject ? { id: 'p1', title: 'Test Novel', lore: null } : null,
-      getActiveChapter: () => hasProject ? { id: 'ch1', lastAnalysis: null } : null,
+      getActiveChapter: () => (hasProject ? { id: 'ch1', lastAnalysis: null } : null),
       chapters: [],
     });
 
-    mockUseEditor.mockReturnValue({
-      currentText: 'Sample text',
-      selectionRange: null,
-      history: [],
-      restore: vi.fn(),
+    mockUseEditorState.mockReturnValue({
       editor: mockEditor,
+      currentText: 'Sample text',
+      history: [],
+      redoStack: [],
+      canUndo: false,
+      canRedo: false,
+      hasUnsavedChanges: false,
+      selectionRange: null,
+      selectionPos: null,
+      cursorPosition: 0,
+      activeHighlight: null,
+      branches: [],
+      activeBranchId: null,
+      isOnMain: true,
+      inlineComments: [],
+      visibleComments: [],
       isZenMode: false,
+    });
+
+    mockUseEditorActions.mockReturnValue({
+      restore: vi.fn(),
       toggleZenMode: mockToggleZenMode,
     });
 

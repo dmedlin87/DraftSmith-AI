@@ -68,8 +68,8 @@ describe('PersonaSelector', () => {
 
       expect(screen.getByText(second.name)).toBeInTheDocument();
 
-      // Simulate a click outside of the dropdown
-      fireEvent.click(document.body);
+      // Simulate a click outside of the dropdown via mousedown (listener uses 'mousedown')
+      fireEvent.mouseDown(document.body);
 
       expect(screen.queryByText(second.name)).not.toBeInTheDocument();
 

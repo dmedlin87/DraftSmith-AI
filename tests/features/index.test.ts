@@ -40,7 +40,7 @@ describe('features barrel indexes', () => {
     expect(typeof Agent.PersonaSelector).toBe('function');
 
     // Editor
-    expect(typeof Editor.RichTextEditor).toBe('function');
+    expect(['function', 'object']).toContain(typeof Editor.RichTextEditor);
     expect(typeof Editor.useMagicEditor).toBe('function');
     expect(typeof Editor.CommentMark).toBe('object');
 

@@ -4,7 +4,7 @@ import { AnalysisResult } from '@/types';
 import { Lore, ManuscriptIndex } from '@/types/schema';
 import { useUsage } from '../context/UsageContext';
 import { ModelConfig } from '@/config/models';
-import { useMagicEditor } from '@/features/editor/hooks/useMagicEditor';
+import { useMagicEditor } from '@/features/editor';
 import { isMemoryTool, executeMemoryTool } from '@/services/gemini/memoryToolHandlers';
 
 // Define proper types

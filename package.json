@@ -11,7 +11,12 @@
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run",
+    "test:status": "node scripts/generate-test-status.mjs",
+    "test:audit": "node scripts/audit-test-gaps.mjs",
+    "test:regression": "node scripts/check-coverage-regression.mjs",
+    "test:full": "npm run test:coverage && npm run test:status && npm run test:audit",
+    "test:quick": "vitest run --reporter=dot"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",

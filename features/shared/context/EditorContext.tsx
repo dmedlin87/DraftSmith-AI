@@ -1,10 +1,7 @@
 import React, { createContext, useContext, useCallback, useState, useMemo } from 'react';
 
 import { useProjectStore } from '@/features/project';
-import { useDocumentHistory } from '@/features/editor/hooks/useDocumentHistory';
-import { useEditorSelection } from '@/features/editor/hooks/useEditorSelection';
-import { useEditorComments } from '@/features/editor/hooks/useEditorComments';
-import { useEditorBranching } from '@/features/editor/hooks/useEditorBranching';
+import { useDocumentHistory, useEditorSelection, useEditorComments, useEditorBranching } from '@/features/editor';
 
 import { HistoryItem, HighlightRange, EditorContext as EditorContextType } from '@/types';
 
@@ -136,7 +133,11 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     activeChapterId, 
     updateChapterContent,
     getActiveChapter 
-  } = useProjectStore();
+  } = useProjectStore((state) => ({
+    activeChapterId: state.activeChapterId,
+    updateChapterContent: state.updateChapterContent,
+    getActiveChapter: state.getActiveChapter,
+  }));
   
   const activeChapter = getActiveChapter();
 

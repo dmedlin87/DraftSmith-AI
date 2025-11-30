@@ -11,7 +11,7 @@ interface CharacterEditorProps {
   onInterview?: (character: CharacterProfile) => void;
 }
 
-const CharacterEditor: React.FC<CharacterEditorProps> = ({ character, onSave, onCancel, onDelete }) => {
+const CharacterEditor: React.FC<CharacterEditorProps> = ({ character, onSave, onCancel, onDelete, onInterview }) => {
   const [form, setForm] = useState<CharacterProfile>({ ...character });
   const [newRelationship, setNewRelationship] = useState({ name: '', type: '', dynamic: '' });
   const [newPlotThread, setNewPlotThread] = useState('');

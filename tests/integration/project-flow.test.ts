@@ -34,6 +34,7 @@ const { projects, chapters, dbMock } = vi.hoisted(() => {
         chapters.push(chapter);
         return chapter.id;
       }),
+      get: vi.fn(async (id: string) => chapters.find(c => c.id === id) || null),
       update: vi.fn(async (id: string, changes: any) => {
         const index = chapters.findIndex(c => c.id === id);
         if (index !== -1) {

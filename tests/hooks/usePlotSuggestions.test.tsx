@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { ModelConfig } from '@/config/models';
 
 const generatePlotIdeasMock = vi.fn();
 const trackUsageMock = vi.fn();
@@ -44,7 +45,7 @@ describe('usePlotSuggestions', () => {
     });
 
     expect(generatePlotIdeasMock).toHaveBeenCalledWith('story text', 'mystery', 'plot');
-    expect(trackUsageMock).toHaveBeenCalledWith(baseResponse.usage);
+    expect(trackUsageMock).toHaveBeenCalledWith(baseResponse.usage, ModelConfig.analysis);
     expect(result.current.suggestions).toEqual(baseResponse.result);
     expect(result.current.error).toBeNull();
     expect(result.current.isLoading).toBe(false);

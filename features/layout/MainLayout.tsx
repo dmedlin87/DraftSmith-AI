@@ -31,13 +31,24 @@ function deriveOrbStatus(isAnalyzing: boolean, isMagicLoading: boolean): OrbStat
  */
 export const MainLayout: React.FC = () => {
   // Contexts - these provide data, not UI state
-  const { currentProject, getActiveChapter, chapters } = useProjectStore();
+  const { currentProject, getActiveChapter, chapters } = useProjectStore((state) => ({
+    currentProject: state.currentProject,
+    getActiveChapter: state.getActiveChapter,
+    chapters: state.chapters,
+  }));
+
   const { currentText, selectionRange, history, editor, isZenMode } = useEditorState();
   const { restore, toggleZenMode } = useEditorActions();
   const { state: engineState, actions: engineActions } = useEngine();
 
   // Layout store for UI state
-  const { activeView, isSidebarCollapsed, theme, toggleSidebar, setActiveView } = useLayoutStore();
+  const { activeView, isSidebarCollapsed, theme, toggleSidebar, setActiveView } = useLayoutStore((state) => ({
+    activeView: state.activeView,
+    isSidebarCollapsed: state.isSidebarCollapsed,
+    theme: state.theme,
+    toggleSidebar: state.toggleSidebar,
+    setActiveView: state.setActiveView,
+  }));
 
   const activeChapter = getActiveChapter();
 

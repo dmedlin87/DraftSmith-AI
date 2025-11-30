@@ -8,7 +8,7 @@
 
 import React, { createContext, useContext, useMemo, useEffect, useRef } from 'react';
 import { useEditor } from './EditorContext';
-import { useAnalysis } from '@/features/analysis/context/AnalysisContext';
+import { useAnalysis } from '@/features/analysis';
 import { useProjectStore } from '@/features/project';
 import { useManuscriptIntelligence } from '@/features/shared/hooks/useManuscriptIntelligence';
 import {

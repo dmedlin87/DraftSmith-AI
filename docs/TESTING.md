@@ -1,8 +1,7 @@
 # Quill AI Testing Plan
 
-> Last updated: 2025-11-29  
-> **Current: 348+ tests passing**  
-> Coverage improved from 8.13% → 85.96% statements (core modules well covered)
+> This document describes the testing strategy and phases for Quill AI.  
+> For up-to-date test counts and coverage, see [TEST_COVERAGE.md](./TEST_COVERAGE.md), which is auto-generated from the Vitest coverage report.
 
 ## Current State
 
@@ -15,9 +14,9 @@
 | Functions | 72.67% | 80% |
 | Lines | 85.96% | 80% |
 
-#### Detailed Snapshot (2025-11-29)
+#### Historical Coverage Snapshot (2025-11-29)
 
-The following table is the direct output from `npm run test:coverage` on 2025-11-29:
+The following table is the direct output from `npm run test:coverage` on 2025-11-29. It is kept here as a historical example only; for current coverage, refer to [TEST_COVERAGE.md](./TEST_COVERAGE.md).
 
 ```text
 All files                                    |   85.96 |     79.8 |   72.67 |   85.96 |                                                     
@@ -351,7 +350,7 @@ Add to GitHub Actions or similar:
 
 ## Progress Tracking (Quill AI)
 
-Update this section as tests are added:
+This phased plan reflects an earlier snapshot of progress. For current coverage and test counts, rely on the auto-generated [TEST_COVERAGE.md](./TEST_COVERAGE.md).
 
 | Phase | Tests Added | Coverage Gain | Status |
 |-------|-------------|---------------|--------|

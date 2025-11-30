@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useEditor } from './EditorContext';
+
 import { useProjectStore } from '@/features/project';
 import { useQuillAIEngine, type PendingDiff } from '../hooks/useDraftSmithEngine';
 import { useManuscriptIndexer } from '../hooks/useManuscriptIndexer';
@@ -49,12 +50,18 @@ const EngineContext = createContext<EngineContextValue | undefined>(undefined);
 
 export const EngineProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentText, commit, selectionRange, clearSelection } = useEditor();
+
   const { 
     currentProject, 
     activeChapterId, 
     updateChapterAnalysis, 
     updateProjectLore 
-  } = useProjectStore();
+  } = useProjectStore((state) => ({
+    currentProject: state.currentProject,
+    activeChapterId: state.activeChapterId,
+    updateChapterAnalysis: state.updateChapterAnalysis,
+    updateProjectLore: state.updateProjectLore,
+  }));
 
   // Initialize the Quill AI Engine
   const engine = useQuillAIEngine({

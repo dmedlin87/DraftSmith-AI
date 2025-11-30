@@ -46,7 +46,15 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
     openTabWithPanel,
     toggleView,
     toggleTheme,
-  } = useLayoutStore();
+  } = useLayoutStore((state) => ({
+    activeTab: state.activeTab,
+    activeView: state.activeView,
+    theme: state.theme,
+    currentPersonaIndex: state.currentPersonaIndex,
+    openTabWithPanel: state.openTabWithPanel,
+    toggleView: state.toggleView,
+    toggleTheme: state.toggleTheme,
+  }));
 
   const currentPersona = DEFAULT_PERSONAS[currentPersonaIndex];
 

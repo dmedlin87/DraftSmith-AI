@@ -58,7 +58,17 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
     handleFixRequest,
     handleSelectGraphCharacter,
     handleInterviewCharacter,
-  } = useLayoutStore();
+  } = useLayoutStore((state) => ({
+    activeTab: state.activeTab,
+    isToolsCollapsed: state.isToolsCollapsed,
+    chatInitialMessage: state.chatInitialMessage,
+    interviewTarget: state.interviewTarget,
+    clearChatInitialMessage: state.clearChatInitialMessage,
+    exitInterview: state.exitInterview,
+    handleFixRequest: state.handleFixRequest,
+    handleSelectGraphCharacter: state.handleSelectGraphCharacter,
+    handleInterviewCharacter: state.handleInterviewCharacter,
+  }));
 
   const shouldShow = !isToolsCollapsed && !isZenMode;
 

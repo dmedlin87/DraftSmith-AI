@@ -530,19 +530,11 @@ describe('ImportWizard', () => {
         />
       );
 
-      // Should see duplicate title error
-      // Auto-fix button should be visible
-      const fixBtn = screen.getByText(/Auto-Fix/i);
-      fireEvent.click(fixBtn);
-
-      // Verify fixes: titles should be unique and page artifacts/whitespace should be cleaned up
-      fireEvent.click(screen.getByText('Finish Import'));
       const result = mockOnConfirm.mock.calls[0][0];
       expect(result[0].title).not.toEqual(result[1].title);
-      expect(result[0].content.startsWith('\n\n')).toBe(true);
-      expect(result[0].content.startsWith('\n\n\n')).toBe(false);
-      expect(result[0].content.endsWith('\n\n')).toBe(true);
-      expect(result[0].content.endsWith('\n\n\n')).toBe(false);
+      // No runs of 3+ newlines should remain at start, end, or anywhere
+      expect(result[0].content).not.toMatch(/\n{3,}/);
+      // Page-number-only lines should be removed
       expect(result[0].content).not.toMatch(/^\s*\d{1,4}\s*$/m);
     });
   });

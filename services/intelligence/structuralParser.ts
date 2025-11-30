@@ -77,16 +77,26 @@ const ACTION_VERBS = [
   'dodged', 'swung', 'struck', 'slashed', 'stabbed', 'shot', 'fired',
 ];
 
-// Description indicators
-const DESCRIPTION_PATTERNS = [
-  /\b(was|were|had|appeared|seemed|looked)\b/i,
-  /\bthe\s+\w+\s+(was|were)\s+\w+/i,
+// Exposition indicators (world-building, history, background info)
+const EXPOSITION_PATTERNS = [
+  /\b(centuries?|decades?|years?)\s+(ago|earlier|before|later)\b/i,
+  /\b(founded|established|built|created|formed|originated)\b/i,
+  /\b(history|origins?|background|tradition)\b/i,
+  /\b(architecture|culture|society|civilization)\b/i,
 ];
 
-// Internal thought indicators
+// Description indicators (sensory, visual details)
+const DESCRIPTION_PATTERNS = [
+  /\b(appeared|seemed|looked)\s+\w+/i,
+  /\bthe\s+\w+\s+(was|were)\s+(covered|painted|decorated|filled)/i,
+];
+
+// Internal thought indicators (require subject context to avoid false positives)
 const INTERNAL_PATTERNS = [
-  /\b(thought|wondered|realized|remembered|recalled|considered|pondered|mused|reflected)\b/i,
-  /\b(felt|sensed|knew|understood|believed|hoped|feared|wished|wanted)\b/i,
+  /\b(she|he|i|they)\s+(thought|wondered|realized|remembered|recalled|considered|pondered|mused|reflected)\b/i,
+  /\b(she|he|i|they)\s+(felt|sensed|knew|understood|believed|hoped|feared|wished|wanted)\b/i,
+  /\bthought\s+(about|of|to)\b/i,
+  /\bwondered\s+(if|whether|about|why|how)\b/i,
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,13 +184,18 @@ const classifyParagraph = (text: string): ParagraphType => {
     return 'action';
   }
   
-  // Check for description
+  // Check for exposition (history, world-building)
+  if (EXPOSITION_PATTERNS.some(p => p.test(trimmed))) {
+    return 'exposition';
+  }
+  
+  // Check for description (sensory details)
   if (DESCRIPTION_PATTERNS.some(p => p.test(trimmed))) {
     return 'description';
   }
   
-  // Default to exposition
-  return 'exposition';
+  // Default to description for remaining prose
+  return 'description';
 };
 
 const extractSpeaker = (paragraphText: string): string | null => {
@@ -194,7 +209,13 @@ const extractSpeaker = (paragraphText: string): string | null => {
     }
   }
   
-  // Try simpler patterns
+  // Try pattern: "dialogue," Name said/asked/etc.
+  const nameFirstMatch = paragraphText.match(/["']\s*,?\s*([A-Z][a-z]+)\s+(?:said|asked|replied|whispered|shouted|muttered|exclaimed)/i);
+  if (nameFirstMatch && nameFirstMatch[1]) {
+    return nameFirstMatch[1];
+  }
+  
+  // Try pattern: "dialogue" said/asked/etc. Name
   const simpleMatch = paragraphText.match(/["']\s*,?\s*(?:said|asked|replied)\s+(\w+)/i);
   if (simpleMatch && /^[A-Z]/.test(simpleMatch[1])) {
     return simpleMatch[1];

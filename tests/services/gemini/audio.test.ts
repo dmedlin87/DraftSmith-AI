@@ -28,8 +28,8 @@ vi.mock('@/services/gemini/client', () => ({
   ai: mockAi,
 }));
 
-// Mock audio utility functions
-vi.mock('@/features/voice/services/audioUtils', () => ({
+// Mock audio utility functions (voice barrel re-exports)
+vi.mock('@/features/voice', () => ({
   base64ToUint8Array: vi.fn((base64: string) => new Uint8Array([1, 2, 3, 4])),
   createBlob: vi.fn((data: any) => new Blob([data as any])),
   decodeAudioData: vi.fn(),
@@ -86,7 +86,7 @@ describe('generateSpeech', () => {
 
     mockAi.models.generateContent.mockResolvedValue(mockResponse);
 
-    const { decodeAudioData } = await import('@/features/voice/services/audioUtils');
+    const { decodeAudioData } = await import('@/features/voice');
     vi.mocked(decodeAudioData).mockResolvedValue(mockAudioBuffer);
 
     const result = await generateSpeech('Hello world');
@@ -284,7 +284,7 @@ describe('connectLiveSession', () => {
     const audioData = new Float32Array([0.1, 0.2, 0.3]);
     await client.sendAudio(audioData);
 
-    const { createBlob } = await import('@/features/voice/services/audioUtils');
+    const { createBlob } = await import('@/features/voice');
     expect(createBlob).toHaveBeenCalledWith(audioData);
     expect(mockLiveSession.sendRealtimeInput).toHaveBeenCalled();
   });
@@ -322,7 +322,7 @@ describe('connectLiveSession', () => {
       }
     };
 
-    const { base64ToUint8Array, decodeAudioData } = await import('@/features/voice/services/audioUtils');
+    const { base64ToUint8Array, decodeAudioData } = await import('@/features/voice');
     vi.mocked(decodeAudioData).mockResolvedValue(mockAudioBuffer);
 
     await onMessageCallback(mockMessage);

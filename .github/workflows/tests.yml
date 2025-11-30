@@ -23,7 +23,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npm test
+      - name: Run tests with coverage
+        run: npm run test:coverage
         env:
           CI: true
+
+      - name: Generate coverage status doc
+        run: npm run test:status
+
+      - name: Check coverage regression
+        run: npm run test:regression
+
+      - name: Generate test gap audit
+        run: npm run test:audit
+
+      - name: Coverage Report (PR Comment)
+        if: github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-summary-path: coverage/coverage-summary.json
+          json-final-path: coverage/coverage-final.json

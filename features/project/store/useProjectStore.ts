@@ -37,6 +37,17 @@ export const useProjectStore = create<ProjectState>((set, get) => {
   const pendingChapterWrites = new Map<string, { timer: ReturnType<typeof setTimeout>; promise: Promise<void>; resolve?: () => void }>();
   const latestChapterContent = new Map<string, { content: string; updatedAt: number }>();
 
+  const runProjectChapterTransaction = async (
+    body: () => Promise<void>,
+  ): Promise<void> => {
+    const anyDb: any = db as any;
+    if (typeof anyDb.transaction === 'function') {
+      await anyDb.transaction('rw', anyDb.projects, anyDb.chapters, body);
+    } else {
+      await body();
+    }
+  };
+
   const scheduleChapterPersist = (chapterId: string, payload: { content: string; updatedAt: number }) => {
     latestChapterContent.set(chapterId, payload);
 
@@ -62,7 +73,7 @@ export const useProjectStore = create<ProjectState>((set, get) => {
           // Fallback: still persist chapter content if we can't resolve project
           await db.chapters.update(chapterId, { content: latest.content, updatedAt: latest.updatedAt });
         } else {
-          await db.transaction('rw', db.projects, db.chapters, async () => {
+          await runProjectChapterTransaction(async () => {
             await db.chapters.update(chapterId, { content: latest.content, updatedAt: latest.updatedAt });
             await db.projects.update(projectId, { updatedAt: latest.updatedAt });
           });
@@ -139,7 +150,7 @@ export const useProjectStore = create<ProjectState>((set, get) => {
         updatedAt: Date.now()
     }));
 
-    await db.transaction('rw', db.projects, db.chapters, async () => {
+    await runProjectChapterTransaction(async () => {
       await db.projects.add(newProject);
       if (chaptersToCreate.length > 0) {
         await db.chapters.bulkAdd(chaptersToCreate);

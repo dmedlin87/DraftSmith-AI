@@ -12,7 +12,10 @@ interface EditorHeaderProps {
  * Auto-hides in Zen Mode but reveals on hover.
  */
 export const EditorHeader: React.FC<EditorHeaderProps> = ({ isZenMode }) => {
-  const { isHeaderHovered, setHeaderHovered } = useLayoutStore();
+  const { isHeaderHovered, setHeaderHovered } = useLayoutStore((state) => ({
+    isHeaderHovered: state.isHeaderHovered,
+    setHeaderHovered: state.setHeaderHovered,
+  }));
 
   const shouldHide = isZenMode && !isHeaderHovered;
 

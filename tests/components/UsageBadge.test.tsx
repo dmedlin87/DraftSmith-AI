@@ -8,11 +8,29 @@ vi.mock('@/features/shared/context/UsageContext', () => ({
   useUsage: () => mockUseUsage(),
 }));
 
+// Mock settings store for deterministic budget threshold
+const mockUseSettingsStore = vi.fn().mockReturnValue({ budgetThreshold: 1.0 });
+vi.mock('@/features/settings', () => ({
+  useSettingsStore: () => mockUseSettingsStore(),
+}));
+
+// Mock AccessibleTooltip so tooltip content is always rendered in the DOM
+vi.mock('@/features/shared/components/AccessibleTooltip', () => ({
+  AccessibleTooltip: ({ content, children }: { content: React.ReactNode; children: React.ReactNode }) => (
+    <div>
+      <div>{children}</div>
+      <div>{content}</div>
+    </div>
+  ),
+}));
+
 import { UsageBadge } from '@/features/shared/components/UsageBadge';
 
 describe('UsageBadge', () => {
   beforeEach(() => {
     mockUseUsage.mockClear();
+    mockUseSettingsStore.mockClear();
+    mockUseSettingsStore.mockReturnValue({ budgetThreshold: 1.0 });
   });
 
   it('returns null when totalRequestCount is 0', () => {
@@ -88,13 +106,16 @@ describe('UsageBadge', () => {
 
     render(<UsageBadge />);
 
-    // Main badge shows cost with 2 decimals
-    expect(screen.getByText(/\$1\.23/)).toBeInTheDocument();
+    // Main badge shows session cost with 2 decimals via aria-label
+    expect(screen.getByLabelText(/cost: \$1\.23/)).toBeInTheDocument();
 
-    // Tooltip shows session and lifetime cost with 4 decimals
-    expect(screen.getByText('Session cost:')).toBeInTheDocument();
+    // Tooltip shows budget limit and session cost with 4 decimals
+    expect(screen.getByText('Limit: $1.00')).toBeInTheDocument();
     expect(screen.getByText(/\$1\.2345/)).toBeInTheDocument();
-    expect(screen.getByText('Lifetime cost:')).toBeInTheDocument();
+
+    // Tooltip shows lifetime cost with 4 decimals
+    expect(screen.getByText('Lifetime:')).toBeInTheDocument();
+    expect(screen.getByText(/\$10\.0000/)).toBeInTheDocument();
 
     // Soft budget indicator
     expect(screen.getByText('high')).toBeInTheDocument();

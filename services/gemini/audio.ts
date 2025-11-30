@@ -1,7 +1,7 @@
 import { Modality, LiveServerMessage } from "@google/genai";
 import { ModelConfig } from "../../config/models";
 import { ai } from "./client";
-import { base64ToUint8Array, createBlob, decodeAudioData } from "@/features/voice/services/audioUtils";
+import { base64ToUint8Array, createBlob, decodeAudioData } from "@/features/voice";
 import { LIVE_AGENT_SYSTEM_INSTRUCTION } from "./prompts";
 
 /** Client interface for a live audio session */

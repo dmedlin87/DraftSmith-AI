@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { ModelConfig } from '@/config/models';
 
 const analyzeDraftMock = vi.fn();
 const trackUsageMock = vi.fn();
@@ -83,7 +84,7 @@ describe('useQuillAIEngine', () => {
       project.manuscriptIndex,
       expect.any(AbortSignal)
     );
-    expect(trackUsageMock).toHaveBeenCalledWith(baseResult.usage);
+    expect(trackUsageMock).toHaveBeenCalledWith(baseResult.usage, ModelConfig.analysis);
     expect(updateChapterAnalysisMock).toHaveBeenCalledWith('chapter-1', baseResult.result);
     expect(updateProjectLoreMock).toHaveBeenCalledWith('project-1', {
       characters: [],

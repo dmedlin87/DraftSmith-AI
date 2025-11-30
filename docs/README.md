@@ -7,8 +7,9 @@ This folder contains project documentation and development guides.
 | Document | Description |
 |----------|-------------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture, state management, and AI pipeline |
-| [TESTING.md](./TESTING.md) | Test coverage plan, phases, and progress tracking |
-| [TEST_COVERAGE.md](./TEST_COVERAGE.md) | Latest test coverage snapshot |
+| [TESTING.md](./TESTING.md) | Test strategy, phases, and patterns |
+| [TEST_COVERAGE.md](./TEST_COVERAGE.md) | Auto-generated test coverage summary |
+| [TEST_AUDIT.md](./TEST_AUDIT.md) | Auto-generated test gap analysis |
 
 ## Quick Links
 
