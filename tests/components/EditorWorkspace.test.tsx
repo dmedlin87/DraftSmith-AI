@@ -19,6 +19,19 @@ vi.mock('@/features/shared', () => ({
   useEditor: vi.fn(),
   useEngine: vi.fn(),
   findQuoteRange: vi.fn(),
+  useManuscriptIntelligence: vi.fn(() => ({
+    intelligence: null,
+    hud: { prioritizedIssues: [] },
+    instantMetrics: { wordCount: 0 },
+    isProcessing: false,
+    updateText: vi.fn(),
+    updateCursor: vi.fn(),
+  })),
+}));
+
+vi.mock('@/features/shared/context/EditorContext', () => ({
+  useEditorState: vi.fn(),
+  useEditorActions: vi.fn(),
 }));
 
 const mockRichTextProps = vi.fn();
@@ -59,35 +72,70 @@ vi.mock('@/features/editor/components/CommentCard', () => ({
 }));
 
 import { useProjectStore } from '@/features/project';
-import { useEditor, useEngine } from '@/features/shared';
+import { useEngine } from '@/features/shared';
+import { useEditorState, useEditorActions } from '@/features/shared/context/EditorContext';
 
 const mockUseProjectStore = useProjectStore as unknown as Mock;
-const mockUseEditor = useEditor as unknown as Mock;
 const mockUseEngine = useEngine as unknown as Mock;
+const mockUseEditorState = useEditorState as unknown as Mock;
+const mockUseEditorActions = useEditorActions as unknown as Mock;
 
 describe('EditorWorkspace', () => {
   const mockRunAnalysis = vi.fn();
   const mockToggleZenMode = vi.fn();
 
   const setupMocks = (overridesEditor: Record<string, any> = {}, overridesEngine: Record<string, any> = {}) => {
+    const { dismissComment: overrideDismissComment, ...editorStateOverrides } = overridesEditor;
+
     mockUseProjectStore.mockReturnValue({
       currentProject: { id: 'p1', title: 'Test Project', setting: { timePeriod: 'Modern', location: 'City' } },
       getActiveChapter: () => ({ id: 'ch1', title: 'Chapter 1', lastAnalysis: null }),
     });
 
-    mockUseEditor.mockReturnValue({
+    mockUseEditorState.mockReturnValue({
+      editor: null,
       currentText: 'Sample manuscript text',
-      updateText: vi.fn(),
-      setSelectionState: vi.fn(),
+      history: [],
+      redoStack: [],
+      canUndo: false,
+      canRedo: false,
+      hasUnsavedChanges: false,
       selectionRange: null,
       selectionPos: null,
+      cursorPosition: 0,
       activeHighlight: null,
-      setEditor: vi.fn(),
-      clearSelection: vi.fn(),
-      editor: null,
+      branches: [],
+      activeBranchId: null,
+      isOnMain: true,
+      inlineComments: [],
+      visibleComments: [],
       isZenMode: false,
+      ...editorStateOverrides,
+    });
+
+    mockUseEditorActions.mockReturnValue({
+      setEditor: vi.fn(),
+      updateText: vi.fn(),
+      commit: vi.fn(),
+      loadDocument: vi.fn(),
+      undo: vi.fn(),
+      redo: vi.fn(),
+      restore: vi.fn(),
+      setSelection: vi.fn(),
+      setSelectionState: vi.fn(),
+      clearSelection: vi.fn(),
+      handleNavigateToIssue: vi.fn(),
+      scrollToPosition: vi.fn(),
+      getEditorContext: vi.fn(),
+      createBranch: vi.fn(),
+      switchBranch: vi.fn(),
+      mergeBranch: vi.fn(),
+      deleteBranch: vi.fn(),
+      renameBranch: vi.fn(),
+      setInlineComments: vi.fn(),
+      dismissComment: overrideDismissComment || vi.fn(),
+      clearComments: vi.fn(),
       toggleZenMode: mockToggleZenMode,
-      ...overridesEditor,
     });
 
     mockUseEngine.mockReturnValue({

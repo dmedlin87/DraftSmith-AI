@@ -16,6 +16,8 @@
     "test:audit": "node scripts/audit-test-gaps.mjs",
     "test:regression": "node scripts/check-coverage-regression.mjs",
     "test:full": "npm run test:coverage && npm run test:status && npm run test:audit",
+    "test:docs": "node scripts/check-coverage-docs-fresh.mjs",
+    "test:docs:strict": "node scripts/check-coverage-docs-strict.mjs",
     "test:quick": "vitest run --reporter=dot"
   },
   "dependencies": {

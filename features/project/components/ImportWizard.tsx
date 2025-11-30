@@ -1082,6 +1082,9 @@ export const ImportWizard: React.FC<Props> = ({
         // Fix page artifacts
         content = content.replace(/^\s*\d{1,4}\s*$/gm, '');
         
+        // Normalize any remaining runs of 3+ newlines (including those introduced by artifact removal)
+        content = content.replace(/\n{3,}/g, '\n\n');
+        
         // Fix duplicate title - append number
         const duplicates = arr.filter((c, i) => 
           i !== idx && c.title.toLowerCase() === title.toLowerCase()

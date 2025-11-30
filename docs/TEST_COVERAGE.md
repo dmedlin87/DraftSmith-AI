@@ -1,6 +1,7 @@
 # Test Coverage Report
 
-**Date:** November 29, 2025
+> NOTE: This is a point-in-time coverage snapshot generated on **November 29, 2025** from `npm run test:coverage`.
+> For current coverage and an auto-dated report, run `npm run test:full` (or `npm run test:coverage && npm run test:status && npm run test:audit`) and use the auto-generated `docs/TEST_COVERAGE.md` from `scripts/generate-test-status.mjs`.
 
 ## Summary
 

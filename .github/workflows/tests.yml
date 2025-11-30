@@ -28,14 +28,24 @@ jobs:
         env:
           CI: true
 
+      - name: Verify coverage docs freshness
+        run: npm run test:docs
+
+      - name: Enforce coverage docs strict consistency
+        run: npm run test:docs:strict
+
       - name: Generate coverage status doc
         run: npm run test:status
+        env:
+          QUILL_COVERAGE_USE_GIT_DATE: '1'
 
       - name: Check coverage regression
         run: npm run test:regression
 
       - name: Generate test gap audit
         run: npm run test:audit
+        env:
+          QUILL_COVERAGE_USE_GIT_DATE: '1'
 
       - name: Coverage Report (PR Comment)
         if: github.event_name == 'pull_request'

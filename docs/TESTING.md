@@ -5,10 +5,12 @@
 
 ## Current State
 
-### Coverage Summary
+### Coverage Summary (snapshot)
 
-| Metric | Current | Target |
-|--------|---------|--------|
+> Snapshot as of **2025-11-29** from a specific `npm run test:coverage` run. For current coverage and test counts, always use the auto-generated [TEST_COVERAGE.md](./TEST_COVERAGE.md).
+
+| Metric | Snapshot | Target |
+|--------|----------|--------|
 | Statements | 85.96% | 80% |
 | Branches | 79.8% | 75% |
 | Functions | 72.67% | 80% |

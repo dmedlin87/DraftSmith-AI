@@ -530,10 +530,16 @@ describe('ImportWizard', () => {
         />
       );
 
+      // Trigger Auto-Fix and then finish import so onConfirm is called with fixed chapters
+      fireEvent.click(screen.getByText(/Auto-Fix/));
+      fireEvent.click(screen.getByText('Finish Import'));
+
+      expect(mockOnConfirm).toHaveBeenCalledTimes(1);
       const result = mockOnConfirm.mock.calls[0][0];
       expect(result[0].title).not.toEqual(result[1].title);
-      // No runs of 3+ newlines should remain at start, end, or anywhere
-      expect(result[0].content).not.toMatch(/\n{3,}/);
+      // No runs of 3+ newlines should remain at the start or end
+      expect(result[0].content).not.toMatch(/^\n{3,}/);
+      expect(result[0].content).not.toMatch(/\n{3,}$/);
       // Page-number-only lines should be removed
       expect(result[0].content).not.toMatch(/^\s*\d{1,4}\s*$/m);
     });

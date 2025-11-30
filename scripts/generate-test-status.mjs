@@ -18,6 +18,7 @@
 import fs from 'node:fs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 // ANSI color codes for terminal output
 const colors = {
@@ -41,6 +42,31 @@ const THRESHOLDS = {
   functions: 80,
   lines: 80,
 };
+
+// Determine the reference date for this report.
+// Priority:
+// 1. QUILL_COVERAGE_DATE env var (ISO string or YYYY-MM-DD)
+// 2. If QUILL_COVERAGE_USE_GIT_DATE=1, use git HEAD commit date
+// 3. Fallback to current system time
+function getReferenceDate() {
+  const envDate = process.env.QUILL_COVERAGE_DATE;
+  if (envDate) {
+    const d = new Date(envDate);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+
+  if (process.env.QUILL_COVERAGE_USE_GIT_DATE === '1') {
+    try {
+      const iso = execSync('git log -1 --format=%cI', { encoding: 'utf-8' }).trim();
+      const d = new Date(iso);
+      if (!Number.isNaN(d.getTime())) return d;
+    } catch {
+      // fall through to system time
+    }
+  }
+
+  return new Date();
+}
 
 async function main() {
   const projectRoot = process.cwd();
@@ -112,7 +138,7 @@ async function main() {
     }
   }
 
-  const now = new Date();
+  const now = getReferenceDate();
   const currentSnapshot = {
     date: now.toISOString(),
     statements: total.statements.pct,
@@ -325,21 +351,35 @@ The full HTML coverage report is available at \`coverage/index.html\` after runn
     ? `${colors.green}✅ All thresholds passing${colors.reset}`
     : `${colors.red}❌ Some thresholds failing${colors.reset}`;
 
-  console.log(`
-${colors.cyan}┌${line}┐${colors.reset}
-${colors.cyan}│${colors.reset}  ${colors.bold}QUILL AI TEST HEALTH${colors.reset}${' '.repeat(40)}${colors.cyan}│${colors.reset}
-${colors.cyan}├${line}┤${colors.reset}
-${colors.cyan}│${colors.reset}  🧪 Tests:      ${colors.bold}${testCounts?.totalTests ?? '?'}${colors.reset} total │ ${colors.green}${testCounts?.passedTests ?? '?'} passed${colors.reset} │ ${testCounts?.failedTests > 0 ? colors.red : colors.dim}${testCounts?.failedTests ?? 0} failed${colors.reset}${' '.repeat(Math.max(0, 10 - String(testCounts?.totalTests ?? 0).length))}${colors.cyan}│${colors.reset}
-${colors.cyan}│${colors.reset}  📊 Coverage:   ${colors.bold}${fmt(total.statements.pct)}${colors.reset} stmts │ ${fmt(total.branches.pct)} branch │ ${fmt(total.functions.pct)} fn${' '.repeat(5)}${colors.cyan}│${colors.reset}
-${colors.cyan}│${colors.reset}  ${thresholdIcon}${' '.repeat(Math.max(0, 36 - (allThresholdsPassing ? 24 : 26)))}${colors.cyan}│${colors.reset}
-${colors.cyan}├${line}┤${colors.reset}
-${colors.cyan}│${colors.reset}  ⚠️  Gaps: ${colors.yellow}${uncoveredFiles.length}${colors.reset} files at 0%, ${colors.yellow}${lowCoverageFiles.length}${colors.reset} files below 50%${' '.repeat(Math.max(0, 20 - String(uncoveredFiles.length).length - String(lowCoverageFiles.length).length))}${colors.cyan}│${colors.reset}
-${colors.cyan}│${colors.reset}  📈 History: ${colors.dim}${history.length} snapshots tracked${colors.reset}${' '.repeat(Math.max(0, 28 - String(history.length).length))}${colors.cyan}│${colors.reset}
-${colors.cyan}└${line}┘${colors.reset}
+  // Helper to pad a row to the box width, ignoring ANSI color codes
+  const makeRow = (inner) => {
+    const plainLength = inner.replace(/\x1b\[[0-9;]*m/g, '').length;
+    const padding = Math.max(0, 62 - plainLength);
+    return `${colors.cyan}│${colors.reset}${inner}${' '.repeat(padding)}${colors.cyan}│${colors.reset}`;
+  };
 
-${colors.green}✓${colors.reset} Wrote ${colors.bold}docs/TEST_COVERAGE.md${colors.reset}
-${colors.green}✓${colors.reset} Updated ${colors.bold}coverage/history.json${colors.reset}
-`);
+  const testsLine = `  🧪 Tests:      ${colors.bold}${testCounts?.totalTests ?? '?'}${colors.reset} total │ ${colors.green}${testCounts?.passedTests ?? '?'} passed${colors.reset} │ ${testCounts?.failedTests > 0 ? colors.red : colors.dim}${testCounts?.failedTests ?? 0} failed${colors.reset}`;
+  const coverageLine = `  📊 Coverage:   ${colors.bold}${fmt(total.statements.pct)}${colors.reset} stmts │ ${fmt(total.branches.pct)} branch │ ${fmt(total.functions.pct)} fn`;
+  const gapsLine = `  ⚠️  Gaps: ${colors.yellow}${uncoveredFiles.length}${colors.reset} files at 0%, ${colors.yellow}${lowCoverageFiles.length}${colors.reset} files below 50%`;
+  const historyLine = `  📈 History: ${colors.dim}${history.length} snapshots tracked${colors.reset}`;
+
+  const box = [
+    `${colors.cyan}┌${line}┐${colors.reset}`,
+    makeRow(`  ${colors.bold}QUILL AI TEST HEALTH${colors.reset}`),
+    `${colors.cyan}├${line}┤${colors.reset}`,
+    makeRow(testsLine),
+    makeRow(coverageLine),
+    makeRow(`  ${thresholdIcon}`),
+    `${colors.cyan}├${line}┤${colors.reset}`,
+    makeRow(gapsLine),
+    makeRow(historyLine),
+    `${colors.cyan}└${line}┘${colors.reset}`,
+    '',
+    `${colors.green}✓${colors.reset} Wrote ${colors.bold}docs/TEST_COVERAGE.md${colors.reset}`,
+    `${colors.green}✓${colors.reset} Updated ${colors.bold}coverage/history.json${colors.reset}`,
+  ].join('\n');
+
+  console.log(`\n${box}\n`);
 }
 
 main().catch((err) => {

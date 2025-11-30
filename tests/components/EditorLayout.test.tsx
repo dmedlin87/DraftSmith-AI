@@ -42,6 +42,14 @@ vi.mock('@/features/shared', () => ({
   useEngine: vi.fn(),
 }));
 
+vi.mock('@/features/shared/context/AppBrainContext', () => ({
+  useAppBrainState: vi.fn(() => ({
+    intelligence: {
+      full: { voice: null },
+    },
+  })),
+}));
+
 vi.mock('framer-motion', () => ({
   motion: {
     div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,

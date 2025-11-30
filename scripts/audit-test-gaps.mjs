@@ -15,6 +15,7 @@
 import fs from 'node:fs';
 import { readFile, writeFile, readdir, stat, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 const colors = {
   reset: '\x1b[0m',
@@ -38,6 +39,31 @@ const IGNORE_PATTERNS = [
   /\.d\.ts$/,
   /setup\.ts$/,
 ];
+
+// Determine the reference date for this report.
+// Priority:
+// 1. QUILL_COVERAGE_DATE env var (ISO string or YYYY-MM-DD)
+// 2. If QUILL_COVERAGE_USE_GIT_DATE=1, use git HEAD commit date
+// 3. Fallback to current system time
+function getReferenceDate() {
+  const envDate = process.env.QUILL_COVERAGE_DATE;
+  if (envDate) {
+    const d = new Date(envDate);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+
+  if (process.env.QUILL_COVERAGE_USE_GIT_DATE === '1') {
+    try {
+      const iso = execSync('git log -1 --format=%cI', { encoding: 'utf-8' }).trim();
+      const d = new Date(iso);
+      if (!Number.isNaN(d.getTime())) return d;
+    } catch {
+      // fall through to system time
+    }
+  }
+
+  return new Date();
+}
 
 async function getAllFiles(dir, baseDir = dir) {
   const files = [];
@@ -198,7 +224,7 @@ async function main() {
   // ─────────────────────────────────────────────────────────────────────────────
   // 7. Generate report
   // ─────────────────────────────────────────────────────────────────────────────
-  const now = new Date();
+  const now = getReferenceDate();
   const dateStr = now.toISOString().split('T')[0];
   const timeStr = now.toISOString().split('T')[1].replace('Z', ' UTC');
 
@@ -309,21 +335,64 @@ npm run test:audit
   // ─────────────────────────────────────────────────────────────────────────────
   // 9. Print terminal summary
   // ─────────────────────────────────────────────────────────────────────────────
-  const line = '─'.repeat(58);
-  
-  console.log(`
-${colors.cyan}┌${line}┐${colors.reset}
-${colors.cyan}│${colors.reset}  ${colors.bold}QUILL AI TEST GAP AUDIT${colors.reset}${' '.repeat(33)}${colors.cyan}│${colors.reset}
-${colors.cyan}├${line}┤${colors.reset}
-${colors.cyan}│${colors.reset}  📁 Source files:     ${colors.bold}${totalSource}${colors.reset} scanned${' '.repeat(Math.max(0, 25 - String(totalSource).length))}${colors.cyan}│${colors.reset}
-${colors.cyan}│${colors.reset}  ✅ With tests:       ${colors.green}${testedCount}${colors.reset} (${testCoverageRatio}%)${' '.repeat(Math.max(0, 22 - String(testedCount).length - testCoverageRatio.length))}${colors.cyan}│${colors.reset}
-${colors.cyan}│${colors.reset}  ❌ Missing tests:    ${colors.yellow}${missingTests.length}${colors.reset} files${' '.repeat(Math.max(0, 26 - String(missingTests.length).length))}${colors.cyan}│${colors.reset}
-${colors.cyan}│${colors.reset}  🗑️  Stale tests:      ${colors.dim}${staleTests.length}${colors.reset} potential${' '.repeat(Math.max(0, 22 - String(staleTests.length).length))}${colors.cyan}│${colors.reset}
-${colors.cyan}│${colors.reset}  ⚠️  Large+low cov:   ${colors.red}${largeLowCoverage.length}${colors.reset} files${' '.repeat(Math.max(0, 26 - String(largeLowCoverage.length).length))}${colors.cyan}│${colors.reset}
-${colors.cyan}└${line}┘${colors.reset}
 
-${colors.green}✓${colors.reset} Wrote ${colors.bold}docs/TEST_AUDIT.md${colors.reset}
-`);
+  const rawLines = [
+    `  ${colors.bold}QUILL AI TEST GAP AUDIT${colors.reset}`,
+    `  📁 Source files:     ${colors.bold}${totalSource}${colors.reset} scanned`,
+    `  ✅ With tests:       ${colors.green}${testedCount}${colors.reset} (${testCoverageRatio}%)`,
+    `  ❌ Missing tests:    ${colors.yellow}${missingTests.length}${colors.reset} files`,
+    `  🗑️  Stale tests:      ${colors.dim}${staleTests.length}${colors.reset} potential`,
+    `  ⚠️  Large+low cov:    ${colors.red}${largeLowCoverage.length}${colors.reset} files`,
+  ];
+
+  const stripAnsi = (s) => s.replace(/\x1b\[[0-9;]*m/g, '');
+
+  // Approximate display width: treat emoji / non-BMP chars as wide, skip variation selectors
+  const getDisplayWidth = (s) => {
+    const plain = stripAnsi(s);
+    let width = 0;
+    for (const ch of plain) {
+      const code = ch.codePointAt(0);
+      if (code === 0xfe0f) continue; // variation selector (no width)
+      // Some emojis render as single-width in Windows terminals
+      if (code === 0x1f5d1 || code === 0x26a0) {
+        width += 1;
+      } else {
+        width += code > 0x1fff ? 2 : 1;
+      }
+    }
+    return width;
+  };
+
+  const innerWidth = rawLines.reduce((max, line) => {
+    const len = getDisplayWidth(line);
+    return len > max ? len : max;
+  }, 0);
+
+  const line = '─'.repeat(innerWidth);
+
+  // Helper to pad a row to the box width, using display-width calculation
+  const makeRow = (inner) => {
+    const plainLength = getDisplayWidth(inner);
+    const padding = Math.max(0, innerWidth - plainLength);
+    return `${colors.cyan}│${colors.reset}${inner}${' '.repeat(padding)}${colors.cyan}│${colors.reset}`;
+  };
+
+  const box = [
+    `${colors.cyan}┌${line}┐${colors.reset}`,
+    makeRow(rawLines[0]),
+    `${colors.cyan}├${line}┤${colors.reset}`,
+    makeRow(rawLines[1]),
+    makeRow(rawLines[2]),
+    makeRow(rawLines[3]),
+    makeRow(rawLines[4]),
+    makeRow(rawLines[5]),
+    `${colors.cyan}└${line}┘${colors.reset}`,
+    '',
+    `${colors.green}✓${colors.reset} Wrote ${colors.bold}docs/TEST_AUDIT.md${colors.reset}`,
+  ].join('\n');
+
+  console.log(`\n${box}\n`);
 }
 
 main().catch((err) => {
