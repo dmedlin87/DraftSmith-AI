@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generatePDF } from '@/services/pdfExport';
+import { PDFExportService } from '@/services/pdfExport';
 import type { AnalysisResult } from '@/types';
+import type { ExportConfig, ExportData } from '@/types/export';
+import { ExportSection } from '@/types/export';
 
-// Mock jspdf so no real files are created
 const saveMock = vi.fn();
 const textMock = vi.fn();
 const addPageMock = vi.fn();
@@ -10,34 +11,31 @@ const lineMock = vi.fn();
 const rectMock = vi.fn();
 const splitTextToSizeMock = vi.fn((text: string | string[], width: number) => {
   if (Array.isArray(text)) return text;
-  // naive split to avoid depending on real layout
   return [String(text)];
 });
 
-vi.mock('jspdf', () => {
-  return {
-    jsPDF: vi.fn().mockImplementation(() => ({
-      internal: {
-        pageSize: {
-          getWidth: vi.fn(() => 210),
-          getHeight: vi.fn(() => 297),
-        },
+vi.mock('jspdf', () => ({
+  jsPDF: vi.fn().mockImplementation(() => ({
+    internal: {
+      pageSize: {
+        getWidth: vi.fn(() => 210),
+        getHeight: vi.fn(() => 297),
       },
-      setFont: vi.fn(),
-      setFontSize: vi.fn(),
-      setTextColor: vi.fn(),
-      setDrawColor: vi.fn(),
-      setFillColor: vi.fn(),
-      setLineWidth: vi.fn(),
-      text: textMock,
-      addPage: addPageMock,
-      line: lineMock,
-      rect: rectMock,
-      splitTextToSize: splitTextToSizeMock,
-      save: saveMock,
-    })),
-  };
-});
+    },
+    setFont: vi.fn(),
+    setFontSize: vi.fn(),
+    setTextColor: vi.fn(),
+    setDrawColor: vi.fn(),
+    setFillColor: vi.fn(),
+    setLineWidth: vi.fn(),
+    text: textMock,
+    addPage: addPageMock,
+    line: lineMock,
+    rect: rectMock,
+    splitTextToSize: splitTextToSizeMock,
+    save: saveMock,
+  })),
+}));
 
 const createBaseAnalysis = (overrides: Partial<AnalysisResult> = {}): AnalysisResult => ({
   summary: 'Overall this is a strong draft with vivid imagery.',
@@ -72,7 +70,50 @@ const createBaseAnalysis = (overrides: Partial<AnalysisResult> = {}): AnalysisRe
   ...overrides,
 });
 
-describe('generatePDF', () => {
+const createExportData = (overrides: Partial<ExportData> = {}): ExportData => ({
+  title: 'The Everwood Chronicles',
+  author: 'A.R. Quinn',
+  content: 'Chapter 1: Dawn\nThe sun rises over Everwood.',
+  lore: {
+    characters: [
+      {
+        name: 'Ava Thorne',
+        bio: 'Reluctant hero.',
+        arc: 'Learns responsibility.',
+        arcStages: [],
+        relationships: [],
+        plotThreads: [],
+        inconsistencies: [],
+        developmentSuggestion: 'More internal conflict.',
+      },
+    ],
+    worldRules: ['No magic after midnight', 'The moon dictates travel'],
+  },
+  analysis: createBaseAnalysis(),
+  ...overrides,
+});
+
+const flattenTextCalls = () =>
+  textMock.mock.calls.flatMap(([value]) => (Array.isArray(value) ? value : [value]));
+
+const defaultConfig: ExportConfig = {
+  sections: [
+    ExportSection.Manuscript,
+    ExportSection.Characters,
+    ExportSection.WorldRules,
+    ExportSection.AnalysisReport,
+  ],
+  manuscriptOptions: {
+    includeChapterTitles: true,
+    fontScale: 1,
+  },
+  analysisOptions: {
+    includeCharts: true,
+    detailedBreakdown: true,
+  },
+};
+
+describe('PDFExportService', () => {
   beforeEach(() => {
     saveMock.mockClear();
     textMock.mockClear();
@@ -82,47 +123,28 @@ describe('generatePDF', () => {
     splitTextToSizeMock.mockClear();
   });
 
-  it('creates a PDF with expected sections and saves with derived filename', () => {
-    const analysis = createBaseAnalysis();
-    const fileName = 'manuscript.docx';
+  it('renders every configured section and saves with a sanitized filename', async () => {
+    const service = new PDFExportService();
+    const data = createExportData();
 
-    generatePDF(analysis, fileName);
+    await expect(service.generatePdf(data, defaultConfig)).resolves.toBeUndefined();
 
-    // Cover page and subsequent section pages
-    expect(addPageMock).toHaveBeenCalled();
-
-    const allTextCalls = textMock.mock.calls.map(args => args[0]);
-
-    // Check for key section headers
-    expect(allTextCalls).toContain('Quill AI Literary Report');
-    expect(allTextCalls).toContain('Executive Summary');
-    expect(allTextCalls).toContain('Key Strengths');
-    expect(allTextCalls).toContain('Areas for Improvement');
-    expect(allTextCalls).toContain('Pacing & Narrative Flow');
-    expect(allTextCalls).toContain('Character Development');
-    expect(allTextCalls).toContain('Plot Analysis');
-
-    // Pacing score header
-    expect(
-      allTextCalls.some((text) =>
-        typeof text === 'string' && text.includes('Pacing Score: 7/10'),
-      ),
-    ).toBe(true);
-
-    // Character name present
-    expect(allTextCalls).toContain('Ava Thorne');
-
-    // Plot issue title
-    expect(allTextCalls).toContain('Motivation unclear for antagonist in Act II');
-
-    // Save called with formatted filename
     expect(saveMock).toHaveBeenCalledTimes(1);
-    const saveArg = saveMock.mock.calls[0][0];
-    expect(saveArg).toBe('QuillAI_Report_manuscript.pdf');
+    expect(saveMock).toHaveBeenCalledWith(
+      'The_Everwood_Chronicles_manuscript-characters-world_rules-analysis_report.pdf',
+    );
+
+    const renderedText = flattenTextCalls();
+    expect(renderedText).toContain('Quill AI Literary Report');
+    expect(renderedText).toContain('Manuscript');
+    expect(renderedText).toContain('Character Profiles');
+    expect(renderedText).toContain('World Rules');
+    expect(renderedText).toContain('Analysis Report');
+    expect(renderedText).toContain('Ava Thorne');
   });
 
-  it('handles empty / minimal analysis data without throwing', () => {
-    const emptyAnalysis: AnalysisResult = {
+  it('handles missing lore entries and empty analysis data without failing', async () => {
+    const minimalAnalysis: AnalysisResult = {
       summary: '',
       strengths: [],
       weaknesses: [],
@@ -138,19 +160,34 @@ describe('generatePDF', () => {
       generalSuggestions: [],
     };
 
-    const fileName = 'empty.txt';
+    const data = createExportData({
+      analysis: minimalAnalysis,
+      lore: {
+        characters: [],
+        worldRules: [],
+      },
+    });
 
-    expect(() => generatePDF(emptyAnalysis, fileName)).not.toThrow();
+    const config: ExportConfig = {
+      sections: [
+        ExportSection.Manuscript,
+        ExportSection.Characters,
+        ExportSection.WorldRules,
+        ExportSection.AnalysisReport,
+      ],
+      manuscriptOptions: { includeChapterTitles: false, fontScale: 1 },
+      analysisOptions: { includeCharts: false, detailedBreakdown: false },
+    };
 
-    // Should still attempt to save a file
+    const service = new PDFExportService();
+    await expect(service.generatePdf(data, config)).resolves.toBeUndefined();
+
     expect(saveMock).toHaveBeenCalledTimes(1);
 
-    // Should still include structural section titles even if content arrays are empty
-    const allTextCalls = textMock.mock.calls.map(args => args[0]);
-    expect(allTextCalls).toContain('Executive Summary');
-    expect(allTextCalls).toContain('Pacing & Narrative Flow');
-    expect(allTextCalls).toContain('Character Development');
-    // Plot Analysis page is only added if there are plot issues, so
-    // we do NOT expect that header here.
+    const renderedText = flattenTextCalls();
+    expect(renderedText).toContain('No character profiles were provided.');
+    expect(renderedText).toContain('No strengths were flagged.');
+    expect(renderedText).toContain('No weaknesses were flagged.');
+    expect(renderedText).toContain('No world rules were submitted.');
   });
 });

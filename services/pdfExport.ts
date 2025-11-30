@@ -1,200 +1,273 @@
-import { jsPDF } from "jspdf";
-import { AnalysisResult } from "../types";
+import { jsPDF } from 'jspdf';
+import { ExportConfig, ExportData, ExportSection } from '../types/export';
 
-export const generatePDF = (analysis: AnalysisResult, fileName: string) => {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  const contentWidth = pageWidth - margin * 2;
-  let cursorY = margin;
+const MARGIN_X = 20;
+const MARGIN_Y = 20;
+const LINE_HEIGHT = 8;
 
-  // Helper: Check page break
-  const checkPageBreak = (height: number) => {
-    if (cursorY + height > pageHeight - margin) {
-      doc.addPage();
-      cursorY = margin;
+interface WrapOptions {
+  font?: 'times' | 'helvetica';
+  style?: 'normal' | 'bold' | 'italic';
+  fontSize?: number;
+  indent?: number;
+}
+
+export class PDFExportService {
+  private doc!: jsPDF;
+  private data!: ExportData;
+  private config!: ExportConfig;
+  private cursorY = MARGIN_Y;
+  private pageHeight = 0;
+  private pageWidth = 0;
+  private contentWidth = 0;
+
+  public generatePdf(data: ExportData, config: ExportConfig): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        this.doc = new jsPDF();
+        this.data = data;
+        this.config = config;
+        this.pageHeight = this.doc.internal.pageSize.getHeight();
+        this.pageWidth = this.doc.internal.pageSize.getWidth();
+        this.contentWidth = this.pageWidth - MARGIN_X * 2;
+        this.cursorY = MARGIN_Y;
+
+        this.addTitlePage();
+
+        for (const section of config.sections) {
+          this.renderSection(section);
+        }
+
+        const safeSections = config.sections.map((section) => section.toLowerCase()).join('-');
+        const fileName = `${this.sanitizeFileName(data.title)}_${safeSections}.pdf`;
+
+        this.doc.save(fileName);
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  private addTitlePage() {
+    this.doc.setFont('times', 'bold');
+    this.doc.setFontSize(32);
+    this.doc.text('Quill AI Literary Report', this.pageWidth / 2, this.pageHeight * 0.3, { align: 'center' });
+
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.setFontSize(18);
+    this.doc.text(this.data.title, this.pageWidth / 2, this.pageHeight * 0.5, { align: 'center' });
+
+    this.doc.setFontSize(14);
+    this.doc.text(`By ${this.data.author}`, this.pageWidth / 2, this.pageHeight * 0.55, { align: 'center' });
+
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    this.doc.text(dateStr, this.pageWidth / 2, this.pageHeight * 0.6, { align: 'center' });
+  }
+
+  private renderSection(section: ExportSection) {
+    const title = this.getSectionTitle(section);
+    this.startSection(title);
+
+    switch (section) {
+      case ExportSection.Manuscript:
+        this.renderManuscript();
+        break;
+      case ExportSection.Characters:
+        this.renderLore();
+        break;
+      case ExportSection.WorldRules:
+        this.renderWorldRules();
+        break;
+      case ExportSection.AnalysisReport:
+        this.renderAnalysis();
+        break;
     }
-  };
-
-  // Helper: Title
-  const addTitle = (text: string, size: number = 24, isSerif = true) => {
-    doc.setFont(isSerif ? "times" : "helvetica", "bold");
-    doc.setFontSize(size);
-    doc.setTextColor(30, 30, 70); // Dark Indigo
-    doc.text(text, margin, cursorY);
-    cursorY += size * 0.5; // Spacing
-  };
-
-  // Helper: Subtitle/Label
-  const addSubtitle = (text: string, size: number = 14) => {
-    checkPageBreak(size);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(size);
-    doc.setTextColor(79, 70, 229); // Indigo 600
-    doc.text(text, margin, cursorY);
-    cursorY += 8;
-  };
-
-  // Helper: Body Text
-  const addBody = (text: string, fontSize: number = 11) => {
-    doc.setFont("times", "normal");
-    doc.setFontSize(fontSize);
-    doc.setTextColor(20, 20, 20);
-    
-    // Split text
-    const lines = doc.splitTextToSize(text, contentWidth);
-    const height = lines.length * (fontSize * 0.45); // Line height approx
-    
-    checkPageBreak(height);
-    doc.text(lines, margin, cursorY);
-    cursorY += height + 6;
-  };
-
-  // Helper: Divider
-  const addDivider = () => {
-    checkPageBreak(10);
-    cursorY += 2;
-    doc.setDrawColor(220, 220, 220);
-    doc.line(margin, cursorY, pageWidth - margin, cursorY);
-    cursorY += 8;
-  };
-
-  // --- COVER PAGE ---
-  cursorY = 60;
-  doc.setFont("times", "bold");
-  doc.setFontSize(32);
-  doc.setTextColor(30, 30, 70);
-  doc.text("Quill AI Literary Report", pageWidth / 2, cursorY, { align: "center" });
-  
-  cursorY += 20;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(14);
-  doc.setTextColor(100, 100, 100);
-  doc.text(`Analysis for: ${fileName}`, pageWidth / 2, cursorY, { align: "center" });
-  
-  cursorY += 10;
-  const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  doc.text(dateStr, pageWidth / 2, cursorY, { align: "center" });
-
-  cursorY += 40;
-  doc.setDrawColor(79, 70, 229);
-  doc.setLineWidth(0.5);
-  doc.line(pageWidth / 2 - 40, cursorY, pageWidth / 2 + 40, cursorY);
-
-  // --- EXECUTIVE SUMMARY ---
-  doc.addPage();
-  cursorY = margin;
-  addTitle("Executive Summary");
-  cursorY += 10;
-  addBody(analysis.summary, 12);
-  
-  cursorY += 10;
-  
-  // Strengths
-  addSubtitle("Key Strengths");
-  if (analysis.strengths) {
-    analysis.strengths.forEach(s => {
-       checkPageBreak(10);
-       doc.setFont("times", "normal");
-       doc.setFontSize(11);
-       doc.setTextColor(22, 163, 74); // Green
-       doc.text("•", margin, cursorY);
-       doc.setTextColor(20, 20, 20);
-       doc.text(doc.splitTextToSize(s, contentWidth - 5), margin + 5, cursorY);
-       cursorY += 7;
-    });
   }
-  cursorY += 5;
 
-  // Weaknesses
-  addSubtitle("Areas for Improvement");
-  if (analysis.weaknesses) {
-    analysis.weaknesses.forEach(w => {
-       checkPageBreak(10);
-       doc.setFont("times", "normal");
-       doc.setFontSize(11);
-       doc.setTextColor(220, 38, 38); // Red
-       doc.text("•", margin, cursorY);
-       doc.setTextColor(20, 20, 20);
-       doc.text(doc.splitTextToSize(w, contentWidth - 5), margin + 5, cursorY);
-       cursorY += 7;
+  private startSection(title: string) {
+    this.doc.addPage();
+    this.cursorY = MARGIN_Y;
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setFontSize(20);
+    this.doc.text(title, MARGIN_X, this.cursorY);
+    this.cursorY += LINE_HEIGHT + 2;
+    this.doc.setDrawColor(200, 200, 200);
+    this.doc.setLineWidth(0.5);
+    this.doc.line(MARGIN_X, this.cursorY, this.pageWidth - MARGIN_X, this.cursorY);
+    this.cursorY += LINE_HEIGHT / 2;
+  }
+
+  private renderManuscript() {
+    const fontSize = Math.max(10, 12 * this.config.manuscriptOptions.fontScale);
+    let content = this.data.content;
+
+    if (!this.config.manuscriptOptions.includeChapterTitles) {
+      content = content.replace(/(?<=\n|^)Chapter[^\n]*\n?/gi, '');
+    }
+
+    this.addWrappedText(content, { font: 'times', style: 'normal', fontSize });
+  }
+
+  private renderLore() {
+    const characters = this.data.lore.characters || [];
+
+    if (characters.length === 0) {
+      this.addWrappedText('No character profiles were provided.', { fontSize: 11 });
+      return;
+    }
+
+    characters.forEach((character) => {
+      const cardHeight = 60;
+      this.checkPageBreak(cardHeight);
+
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.setFontSize(14);
+      this.doc.text(character.name, MARGIN_X, this.cursorY);
+      this.cursorY += LINE_HEIGHT;
+
+      this.addWrappedText(`Bio: ${character.bio}`, { fontSize: 11 });
+      this.addWrappedText(`Arc: ${character.arc}`, { font: 'helvetica', style: 'italic', fontSize: 11 });
+      this.cursorY += 6;
     });
   }
 
-  // --- PACING ---
-  doc.addPage();
-  cursorY = margin;
-  addTitle("Pacing & Narrative Flow");
-  cursorY += 10;
-  
-  addSubtitle(`Pacing Score: ${analysis.pacing.score}/10`);
-  addBody(analysis.pacing.analysis);
+  private renderWorldRules() {
+    const rules = this.data.lore.worldRules || [];
 
-  if (analysis.pacing.slowSections.length > 0) {
-      addSubtitle("Dragging Sections (Slow)", 12);
-      analysis.pacing.slowSections.forEach(s => addBody(`• ${s}`));
-  }
-  
-  if (analysis.pacing.fastSections.length > 0) {
-      addSubtitle("Rushed Sections (Fast)", 12);
-      analysis.pacing.fastSections.forEach(s => addBody(`• ${s}`));
+    if (rules.length === 0) {
+      this.addWrappedText('No world rules were submitted.', { fontSize: 11 });
+      return;
+    }
+
+    rules.forEach((rule) => {
+      this.addWrappedText(`• ${rule}`, { fontSize: 11, indent: 5 });
+    });
   }
 
-  // --- CHARACTERS ---
-  doc.addPage();
-  cursorY = margin;
-  addTitle("Character Development");
-  cursorY += 5;
+  private renderAnalysis() {
+    const analysis = this.data.analysis;
 
-  analysis.characters.forEach((char) => {
-     checkPageBreak(60); // Ensure we don't start a char at very bottom
-     
-     // Box for character
-     doc.setFillColor(248, 250, 252); // Slate 50
-     doc.setDrawColor(226, 232, 240); // Slate 200
-     doc.rect(margin - 2, cursorY - 5, contentWidth + 4, 12, 'F');
-     
-     doc.setFont("times", "bold");
-     doc.setFontSize(16);
-     doc.setTextColor(30, 30, 70);
-     doc.text(char.name, margin, cursorY + 3);
-     cursorY += 15;
+    this.addSubSectionTitle('Executive Summary');
+    this.addWrappedText(analysis.summary, { fontSize: 12 });
 
-     addBody(`Bio: ${char.bio}`);
-     addBody(`Arc: ${char.arc}`);
-     
-     if (char.developmentSuggestion) {
-         doc.setFont("helvetica", "italic");
-         doc.setFontSize(10);
-         doc.setTextColor(79, 70, 229);
-         const lines = doc.splitTextToSize(`Suggestion: ${char.developmentSuggestion}`, contentWidth);
-         checkPageBreak(lines.length * 5);
-         doc.text(lines, margin, cursorY);
-         cursorY += (lines.length * 5) + 10;
-     } else {
-         cursorY += 5;
-     }
-     
-     addDivider();
-  });
+    this.addSubSectionTitle('Key Strengths');
+    if (analysis.strengths.length === 0) {
+      this.addWrappedText('No strengths were flagged.', { fontSize: 11 });
+    } else {
+      analysis.strengths.forEach((strength) =>
+        this.addWrappedText(`• ${strength}`, { indent: 5, fontSize: 11 }),
+      );
+    }
 
-  // --- PLOT ISSUES ---
-  if (analysis.plotIssues.length > 0) {
-      doc.addPage();
-      cursorY = margin;
-      addTitle("Plot Analysis");
-      cursorY += 10;
+    this.addSubSectionTitle('Areas for Improvement');
+    if (analysis.weaknesses.length === 0) {
+      this.addWrappedText('No weaknesses were flagged.', { fontSize: 11 });
+    } else {
+      analysis.weaknesses.forEach((weakness) =>
+        this.addWrappedText(`• ${weakness}`, { indent: 5, fontSize: 11 }),
+      );
+    }
 
-      analysis.plotIssues.forEach(issue => {
-          checkPageBreak(30);
-          addSubtitle(issue.issue, 12);
-          addBody(`Location: ${issue.location}`);
-          addBody(`Fix Suggestion: ${issue.suggestion}`);
-          cursorY += 5;
+    this.addSubSectionTitle('Pacing Analysis');
+    this.addWrappedText(`Score: ${analysis.pacing.score}/10`, { fontSize: 11 });
+    this.addWrappedText(analysis.pacing.analysis, { fontSize: 11 });
+
+    if (analysis.pacing.slowSections.length > 0) {
+      this.addWrappedText('Slow Sections:', { fontSize: 11 });
+      analysis.pacing.slowSections.forEach((entry) =>
+        this.addWrappedText(`• ${entry}`, { indent: 5, fontSize: 11 }),
+      );
+    }
+
+    if (analysis.pacing.fastSections.length > 0) {
+      this.addWrappedText('Fast Sections:', { fontSize: 11 });
+      analysis.pacing.fastSections.forEach((entry) =>
+        this.addWrappedText(`• ${entry}`, { indent: 5, fontSize: 11 }),
+      );
+    }
+
+    if (analysis.plotIssues.length > 0) {
+      this.addSubSectionTitle('Plot Issues');
+      analysis.plotIssues.forEach((issue) => {
+        this.addWrappedText(issue.issue, { fontSize: 11 });
+        this.addWrappedText(`Location: ${issue.location}`, { indent: 5, fontSize: 10 });
+        this.addWrappedText(`Suggestion: ${issue.suggestion}`, { indent: 5, fontSize: 10 });
       });
+    }
+
+    if (analysis.settingAnalysis) {
+      this.addSubSectionTitle('Setting Analysis');
+      this.addWrappedText(`Score: ${analysis.settingAnalysis.score}/10`, { fontSize: 11 });
+      this.addWrappedText(analysis.settingAnalysis.analysis, { fontSize: 11 });
+    }
+
+    if (analysis.generalSuggestions.length > 0) {
+      this.addSubSectionTitle('General Suggestions');
+      analysis.generalSuggestions.forEach((suggestion) =>
+        this.addWrappedText(`• ${suggestion}`, { indent: 5, fontSize: 11 }),
+      );
+    }
+
+    if (this.config.analysisOptions.includeCharts) {
+      this.addWrappedText('Charts will be rendered once the layout utilities are available.', { fontSize: 10 });
+    }
+
+    if (this.config.analysisOptions.detailedBreakdown) {
+      this.addWrappedText('Detailed breakdowns respect chapter-level pacing and character arcs.', { fontSize: 10 });
+    }
   }
 
-  // Save
-  doc.save(`QuillAI_Report_${fileName.replace(/\.[^/.]+$/, "")}.pdf`);
-};
+  private addSubSectionTitle(title: string) {
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setFontSize(14);
+    this.doc.text(title, MARGIN_X, this.cursorY);
+    this.cursorY += LINE_HEIGHT;
+    this.doc.setDrawColor(220, 220, 220);
+    this.doc.setLineWidth(0.3);
+    this.doc.line(MARGIN_X, this.cursorY, this.pageWidth - MARGIN_X, this.cursorY);
+    this.cursorY += LINE_HEIGHT / 2;
+  }
+
+  private addWrappedText(text: string, options: WrapOptions = {}) {
+    const fontSize = options.fontSize ?? 11;
+    const lineHeight = Math.max(fontSize * 0.5, 6);
+    const indent = options.indent ?? 0;
+    const width = this.contentWidth - indent;
+    const lines = this.doc.splitTextToSize(text, width);
+    const height = lines.length * lineHeight;
+
+    this.checkPageBreak(height);
+
+    this.doc.setFont(options.font ?? 'times', options.style ?? 'normal');
+    this.doc.setFontSize(fontSize);
+    this.doc.text(lines, MARGIN_X + indent, this.cursorY);
+    this.cursorY += height + 4;
+  }
+
+  private checkPageBreak(height: number) {
+    if (this.cursorY + height > this.pageHeight - MARGIN_Y) {
+      this.doc.addPage();
+      this.cursorY = MARGIN_Y;
+    }
+  }
+
+  private getSectionTitle(section: ExportSection) {
+    switch (section) {
+      case ExportSection.Manuscript:
+        return 'Manuscript';
+      case ExportSection.Characters:
+        return 'Character Profiles';
+      case ExportSection.WorldRules:
+        return 'World Rules';
+      case ExportSection.AnalysisReport:
+        return 'Analysis Report';
+    }
+  }
+
+  private sanitizeFileName(value: string) {
+    return value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
+  }
+}
+
+export const pdfExportService = new PDFExportService();
