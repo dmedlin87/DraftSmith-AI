@@ -231,7 +231,7 @@ describe('memoryToolHandlers', () => {
           progress: 50,
         }, mockContext);
 
-        expect(result).toContain('✓ Goal updated');
+        expect(result).toContain('Goal updated');
         expect(result).toContain('50%');
       });
 
@@ -252,7 +252,7 @@ describe('memoryToolHandlers', () => {
           progress: 100,
         }, mockContext);
 
-        expect(result).toContain('✓ Goal updated');
+        expect(result).toContain('Goal updated');
       });
 
       it('returns error when id is missing', async () => {
