@@ -5,7 +5,7 @@
  * Provides multiple formats for different use cases (full, compressed, focused).
  */
 
-import { AppBrainState, AppBrainContext } from './types';
+import { AppBrainState, AppBrainContext, AgentContextOptions } from './types';
 import { eventBus } from './eventBus';
 import {
   getMemoriesForContext,
@@ -17,7 +17,10 @@ import {
 /**
  * Build full context string for agent system prompt
  */
-export const buildAgentContext = (state: AppBrainState): string => {
+export const buildAgentContext = (
+  state: AppBrainState,
+  options?: AgentContextOptions,
+): string => {
   const { manuscript, intelligence, analysis, lore, ui, session } = state;
   let ctx = '';
 
@@ -201,6 +204,24 @@ export const buildAgentContext = (state: AppBrainState): string => {
   if (recentEvents) {
     ctx += recentEvents;
     ctx += '\n';
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // DEEP ANALYSIS: VOICE FINGERPRINTS (optional)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (options?.deepAnalysis && intelligence.full?.voice) {
+    const voice = intelligence.full.voice;
+    const profiles = Object.values(voice.profiles);
+
+    if (profiles.length > 0) {
+      ctx += `[DEEP ANALYSIS: VOICE FINGERPRINTS]\n`;
+      for (const profile of profiles.slice(0, 5)) {
+        const latinatePct = Math.round(profile.metrics.latinateRatio * 100);
+        const contractionPct = Math.round(profile.metrics.contractionRatio * 100);
+        ctx += `• ${profile.speakerName}: ${profile.impression} (${latinatePct}% Formal, ${contractionPct}% Casual).\n`;
+      }
+      ctx += 'Use these metrics to ensure character voice consistency.\n\n';
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -403,7 +424,7 @@ export const buildEditingContext = (state: AppBrainState): string => {
  */
 export const createContextBuilder = (getState: () => AppBrainState): AppBrainContext => {
   return {
-    getAgentContext: () => buildAgentContext(getState()),
+    getAgentContext: (options?: AgentContextOptions) => buildAgentContext(getState(), options),
     getAgentContextWithMemory: (projectId: string | null) => 
       buildAgentContextWithMemory(getState(), projectId),
     getCompressedContext: () => buildCompressedContext(getState()),

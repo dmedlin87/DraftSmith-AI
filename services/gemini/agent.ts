@@ -10,7 +10,7 @@ import { CritiqueIntensity, DEFAULT_CRITIQUE_INTENSITY } from "../../types/criti
 import { ExperienceLevel, AutonomyMode, DEFAULT_EXPERIENCE, DEFAULT_AUTONOMY } from "../../types/experienceSettings";
 import { getIntensityModifier } from "./critiquePrompts";
 import { getExperienceModifier, getAutonomyModifier } from "./experiencePrompts";
-import { ManuscriptHUD } from "../../types/intelligence";
+import { ManuscriptHUD, VoiceFingerprint } from "../../types/intelligence";
 
 /**
  * Build a roleplay interview block for a character, preserving manuscript context.
@@ -298,6 +298,10 @@ export interface CreateAgentSessionOptions {
   interviewTarget?: CharacterProfile;
   /** Pre-formatted memory context string (from buildAgentContextWithMemory) */
   memoryContext?: string;
+  /** Optional voice fingerprint for deep analysis mode */
+  voiceFingerprint?: VoiceFingerprint;
+  /** If true, include deep voice analytics in the system prompt */
+  deepAnalysis?: boolean;
 }
 
 export const createAgentSession = (options: CreateAgentSessionOptions = {}) => {
@@ -312,6 +316,8 @@ export const createAgentSession = (options: CreateAgentSessionOptions = {}) => {
     intelligenceHUD,
     interviewTarget,
     memoryContext,
+    voiceFingerprint,
+    deepAnalysis,
   } = options;
   let loreContext = "";
   if (lore) {
@@ -353,6 +359,22 @@ export const createAgentSession = (options: CreateAgentSessionOptions = {}) => {
     CHARACTERS (FROM ANALYSIS):
     ${analysis.characters.map(c => `- ${c.name}: ${c.arc} (Suggestion: ${c.developmentSuggestion})`).join('\n')}
     `;
+  }
+
+  // Optional deep voice analytics block
+  if (deepAnalysis && voiceFingerprint && Object.keys(voiceFingerprint.profiles).length > 0) {
+    const profiles = Object.values(voiceFingerprint.profiles);
+    let voiceContext = `
+    [DEEP ANALYSIS: VOICE FINGERPRINTS]
+    `;
+    for (const profile of profiles.slice(0, 5)) {
+      const latinatePct = Math.round(profile.metrics.latinateRatio * 100);
+      const contractionPct = Math.round(profile.metrics.contractionRatio * 100);
+      voiceContext += `• ${profile.speakerName}: ${profile.impression} (${latinatePct}% Formal, ${contractionPct}% Casual).\n`;
+    }
+    voiceContext += 'Use these metrics to ensure character voice consistency.\n';
+
+    analysisContext += `\n${voiceContext}`;
   }
 
   const intensityModifier = getIntensityModifier(intensity);

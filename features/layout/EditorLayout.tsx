@@ -7,6 +7,7 @@ import { ChatInterface, ActivityFeed } from '@/features/agent';
 import { VoiceMode } from '@/features/voice';
 import { MagicBar, FindReplaceModal, VisualDiff, RichTextEditor } from '@/features/editor';
 import { findQuoteRange, useEditor, useEngine } from '@/features/shared';
+import { useAppBrainState } from '@/features/shared/context/AppBrainContext';
 
 /**
  * EditorLayout
@@ -63,6 +64,8 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
 
   const { currentProject, getActiveChapter, chapters } = useProjectStore();
   const { state: engineState, actions: engineActions } = useEngine();
+  const appBrainState = useAppBrainState();
+  const voiceFingerprint = appBrainState.intelligence.full?.voice;
   
   const activeChapter = getActiveChapter();
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
@@ -270,6 +273,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
                   lore={currentProject?.lore}
                   chapters={chapters}
                   analysis={activeChapter?.lastAnalysis}
+                  voiceFingerprint={voiceFingerprint}
                 />
               )}
               {activeTab === SidebarTab.HISTORY && (

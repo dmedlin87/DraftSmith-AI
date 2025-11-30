@@ -71,43 +71,43 @@ describe('Gemini Client - Invalid Configuration', () => {
     mockValidateApiKey.mockReturnValue(null);
   });
 
-  it('throws descriptive error when API key validation fails', async () => {
+  it('reports invalid configuration via status API when API key is missing', async () => {
     mockGetApiKey.mockReturnValue('');
     mockValidateApiKey.mockReturnValue('API key is required');
-    
-    await expect(import('@/services/gemini/client')).rejects.toThrow(
-      'API Configuration Error'
-    );
+
+    const { isApiConfigured, getApiStatus } = await import('@/services/gemini/client');
+
+    expect(isApiConfigured()).toBe(false);
+    const status = getApiStatus();
+    expect(status.configured).toBe(false);
+    expect(status.error).toContain('API key is required');
   });
 
-  it('throws error with guidance to set environment variable', async () => {
+  it('reports invalid format error via status API', async () => {
     mockGetApiKey.mockReturnValue('bad-key');
     mockValidateApiKey.mockReturnValue('Invalid format');
-    
-    await expect(import('@/services/gemini/client')).rejects.toThrow(
-      'VITE_GEMINI_API_KEY'
-    );
+
+    const { isApiConfigured, getApiStatus } = await import('@/services/gemini/client');
+
+    expect(isApiConfigured()).toBe(false);
+    const status = getApiStatus();
+    expect(status.configured).toBe(false);
+    expect(status.error).toContain('Invalid format');
   });
 
-  it('logs error to console when validation fails', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    
+  it('logs warning to console when validation fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     mockGetApiKey.mockReturnValue('bad-key');
     mockValidateApiKey.mockReturnValue('Invalid format');
-    
-    try {
-      await import('@/services/gemini/client');
-    } catch {
-      // Expected to throw
-    }
-    
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[Quill AI API]')
-    );
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Invalid format')
-    );
-    
+
+    await import('@/services/gemini/client');
+
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
+    const logged = consoleSpy.mock.calls[0][0];
+    expect(logged).toContain('[Quill AI API]');
+    expect(logged).toContain('Invalid format');
+
     consoleSpy.mockRestore();
   });
 });

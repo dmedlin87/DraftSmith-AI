@@ -187,9 +187,13 @@ export interface AppBrainActions {
 // CONTEXT BUILDERS
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface AgentContextOptions {
+  deepAnalysis?: boolean;
+}
+
 export interface AppBrainContext {
   /** Full context string for agent system prompt */
-  getAgentContext: () => string;
+  getAgentContext: (options?: AgentContextOptions) => string;
   
   /** Full context with memory (async) - primary builder for agent sessions */
   getAgentContextWithMemory: (projectId: string | null) => Promise<string>;

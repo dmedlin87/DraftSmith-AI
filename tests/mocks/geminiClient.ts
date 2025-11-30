@@ -122,6 +122,7 @@ export const mockAnalysisResult = {
       plotThreads: ['Main quest', 'Personal growth'],
       inconsistencies: [],
       developmentSuggestion: 'Show more vulnerability',
+      voiceTraits: '',
     },
   ],
   generalSuggestions: ['Consider adding more sensory details'],

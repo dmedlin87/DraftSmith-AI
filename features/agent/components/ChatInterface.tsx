@@ -38,6 +38,7 @@ import { Chat } from "@google/genai";
 import { Lore, Chapter } from '@/types/schema';
 
 import { Persona, DEFAULT_PERSONAS } from '@/types/personas';
+import { VoiceFingerprint } from '@/types/intelligence';
 
 import { PersonaSelector } from './PersonaSelector';
 
@@ -72,6 +73,9 @@ interface ChatInterfaceProps {
   /** Project ID for memory context - enables persistent memory */
   projectId?: string | null;
 
+  /** Optional precomputed voice fingerprint from intelligence layer */
+  voiceFingerprint?: VoiceFingerprint;
+
 }
 
 
@@ -102,6 +106,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   projectId,
 
+  voiceFingerprint,
+
 }) => {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -113,6 +119,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [agentState, setAgentState] = useState<'idle' | 'thinking' | 'writing'>('idle');
 
   const [currentPersona, setCurrentPersona] = useState<Persona>(initialPersona || DEFAULT_PERSONAS[0]);
+
+  const [isDeepMode, setIsDeepMode] = useState(false);
 
   
 
@@ -195,6 +203,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       autonomy: autonomyMode,
       interviewTarget: interviewTarget || undefined,
       memoryContext,
+      voiceFingerprint,
+      deepAnalysis: isDeepMode,
     });
 
     
@@ -227,7 +237,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     initializeSession().catch(console.error);
 
-  }, [lore, analysis, chapters, fullText, interviewTarget, buildMemoryContext]);
+  }, [lore, analysis, chapters, fullText, interviewTarget, buildMemoryContext, isDeepMode, voiceFingerprint]);
 
 
 
@@ -279,7 +289,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     try {
       // 1. Construct Context-Aware Prompt
+      let deepVoiceContext = '';
+      if (isDeepMode && voiceFingerprint && Object.keys(voiceFingerprint.profiles).length > 0) {
+        deepVoiceContext += '[DEEP ANALYSIS: VOICE FINGERPRINTS]\n';
+        const profiles = Object.values(voiceFingerprint.profiles);
+        for (const profile of profiles.slice(0, 5)) {
+           const latinatePct = Math.round(profile.metrics.latinateRatio * 100);
+           const contractionPct = Math.round(profile.metrics.contractionRatio * 100);
+           deepVoiceContext += `• ${profile.speakerName}: ${profile.impression} (${latinatePct}% Formal, ${contractionPct}% Casual).\n`;
+        }
+        deepVoiceContext += 'Use these metrics to ensure character voice consistency.\n\n';
+      }
+
       const contextPrompt = `
+      [DEEP MODE]: ${isDeepMode ? 'ON' : 'OFF'}
+      ${deepVoiceContext}
       [USER CONTEXT]
       Cursor Index: ${editorContext.cursorPosition}
       Selection: ${editorContext.selection ? `"${editorContext.selection.text}"` : "None"}
@@ -504,7 +528,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       <div className="p-4 border-t border-gray-100 bg-white">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <input
             type="text"
             className="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-shadow disabled:bg-gray-100 disabled:text-gray-400"
@@ -514,6 +538,18 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             disabled={isLoading}
           />
+          <button 
+            type="button"
+            onClick={() => setIsDeepMode(prev => !prev)}
+            title="Deep Mode: Enables Voice Analysis."
+            className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
+              isDeepMode
+                ? 'border-purple-300 bg-purple-50 text-purple-600'
+                : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            {isDeepMode ? '🧠 Deep' : '👻 Deep'}
+          </button>
           <button 
             onClick={sendMessage}
             disabled={!input.trim() || isLoading}
