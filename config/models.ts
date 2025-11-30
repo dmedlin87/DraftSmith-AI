@@ -4,20 +4,184 @@
  * All Gemini model IDs are defined here to enable easy version upgrades
  * and ensure consistency across the application.
  */
+ 
+type ModelRole = 'analysis' | 'agent' | 'tts' | 'liveAudio' | 'tools';
+
+type Provider = 'gemini' | 'openai';
+
+interface ModelDefinition {
+  id: string;
+  provider: Provider;
+  role: ModelRole;
+  maxTokens?: number;
+  costTier?: 'cheap' | 'balanced' | 'premium';
+  latencyTier?: 'fast' | 'medium' | 'slow';
+  defaultThinkingBudget?: number;
+}
+
+type ModelBuildKey = 'default' | 'cheap' | 'deepThinking';
+
+type ModelBuild = Record<ModelRole, ModelDefinition>;
+
+const MODEL_BUILD_ENV = (process.env.VITE_MODEL_BUILD || process.env.MODEL_BUILD) as
+  | ModelBuildKey
+  | undefined;
+
+export const ModelBuilds: Record<ModelBuildKey, ModelBuild> = {
+  default: {
+    analysis: {
+      id: 'gemini-3-pro-preview',
+      provider: 'gemini',
+      role: 'analysis',
+      maxTokens: 1_000_000,
+      costTier: 'balanced',
+      latencyTier: 'medium',
+      defaultThinkingBudget: 32768,
+    },
+    agent: {
+      id: 'gemini-2.5-flash',
+      provider: 'gemini',
+      role: 'agent',
+      costTier: 'cheap',
+      latencyTier: 'fast',
+    },
+    tts: {
+      id: 'gemini-2.5-flash-preview-tts',
+      provider: 'gemini',
+      role: 'tts',
+      maxTokens: 8_000,
+      costTier: 'balanced',
+      latencyTier: 'medium',
+    },
+    liveAudio: {
+      id: 'gemini-2.5-flash-native-audio-preview-09-2025',
+      provider: 'gemini',
+      role: 'liveAudio',
+      maxTokens: 32_000,
+      costTier: 'balanced',
+      latencyTier: 'medium',
+    },
+    tools: {
+      id: 'gemini-2.5-flash',
+      provider: 'gemini',
+      role: 'tools',
+      costTier: 'cheap',
+      latencyTier: 'fast',
+    },
+  },
+  cheap: {
+    analysis: {
+      id: 'gemini-2.5-flash',
+      provider: 'gemini',
+      role: 'analysis',
+      maxTokens: 1_000_000,
+      costTier: 'cheap',
+      latencyTier: 'fast',
+      defaultThinkingBudget: 16384,
+    },
+    agent: {
+      id: 'gemini-2.5-flash',
+      provider: 'gemini',
+      role: 'agent',
+      costTier: 'cheap',
+      latencyTier: 'fast',
+    },
+    tts: {
+      id: 'gemini-2.5-flash-preview-tts',
+      provider: 'gemini',
+      role: 'tts',
+      maxTokens: 8_000,
+      costTier: 'cheap',
+      latencyTier: 'fast',
+    },
+    liveAudio: {
+      id: 'gemini-2.5-flash-native-audio-preview-09-2025',
+      provider: 'gemini',
+      role: 'liveAudio',
+      maxTokens: 32_000,
+      costTier: 'cheap',
+      latencyTier: 'fast',
+    },
+    tools: {
+      id: 'gemini-2.5-flash',
+      provider: 'gemini',
+      role: 'tools',
+      costTier: 'cheap',
+      latencyTier: 'fast',
+    },
+  },
+  deepThinking: {
+    analysis: {
+      id: 'gemini-3-pro-preview',
+      provider: 'gemini',
+      role: 'analysis',
+      maxTokens: 1_000_000,
+      costTier: 'premium',
+      latencyTier: 'slow',
+      defaultThinkingBudget: 65536,
+    },
+    agent: {
+      id: 'gemini-3-pro-preview',
+      provider: 'gemini',
+      role: 'agent',
+      maxTokens: 1_000_000,
+      costTier: 'premium',
+      latencyTier: 'medium',
+    },
+    tts: {
+      id: 'gemini-2.5-flash-preview-tts',
+      provider: 'gemini',
+      role: 'tts',
+      maxTokens: 8_000,
+      costTier: 'balanced',
+      latencyTier: 'medium',
+    },
+    liveAudio: {
+      id: 'gemini-2.5-flash-native-audio-preview-09-2025',
+      provider: 'gemini',
+      role: 'liveAudio',
+      maxTokens: 32_000,
+      costTier: 'balanced',
+      latencyTier: 'medium',
+    },
+    tools: {
+      id: 'gemini-3-pro-preview',
+      provider: 'gemini',
+      role: 'tools',
+      maxTokens: 1_000_000,
+      costTier: 'premium',
+      latencyTier: 'medium',
+    },
+  },
+};
+
+const ACTIVE_BUILD_KEY: ModelBuildKey =
+  MODEL_BUILD_ENV && MODEL_BUILD_ENV in ModelBuilds ? MODEL_BUILD_ENV : 'default';
+
+export const ActiveModels: ModelBuild = ModelBuilds[ACTIVE_BUILD_KEY];
 
 export const ModelConfig = {
-  // Primary models
-  analysis: 'gemini-3-pro-preview',      // Deep thinking for analysis tasks
-  agent: 'gemini-2.5-flash',             // Fast model for chat/agent interactions
-  
-  // Specialized models
-  tts: 'gemini-2.5-flash-preview-tts',   // Text-to-speech
-  liveAudio: 'gemini-2.5-flash-native-audio-preview-09-2025', // Real-time voice
-  tools: 'gemini-2.5-flash',             // Quick tool responses (explain/thesaurus)
-  
-  // Legacy aliases (for migration)
-  get pro() { return this.analysis; },
-  get flash() { return this.agent; },
+  get analysis() {
+    return ActiveModels.analysis.id;
+  },
+  get agent() {
+    return ActiveModels.agent.id;
+  },
+  get tts() {
+    return ActiveModels.tts.id;
+  },
+  get liveAudio() {
+    return ActiveModels.liveAudio.id;
+  },
+  get tools() {
+    return ActiveModels.tools.id;
+  },
+  get pro() {
+    return this.analysis;
+  },
+  get flash() {
+    return this.agent;
+  },
 } as const;
 
 /**

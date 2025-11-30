@@ -13,13 +13,14 @@ import { getApiKey, validateApiKey } from '../../config/api';
 // Initialize with environment key
 const apiKey = getApiKey();
 
-// Validate on initialization - throw if API key is empty/missing
+// Validate on initialization - log but DO NOT throw, so the UI can still load
 const validationError = validateApiKey(apiKey);
 if (validationError) {
   // Log for debugging context
-  console.error(`[Quill AI API] ${validationError}`);
-  // Throw a descriptive error that the UI can catch
-  throw new Error(`API Configuration Error: ${validationError}. Please set your VITE_GEMINI_API_KEY environment variable.`);
+  console.warn(`[Quill AI API] ${validationError}`);
+  // We intentionally do not throw here so that the application can render
+  // even when the Gemini API key is missing. Calls to the client will fail
+  // at request-time instead of crashing the entire app at import-time.
 }
 
 /**

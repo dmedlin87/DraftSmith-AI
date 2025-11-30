@@ -54,6 +54,33 @@ You are talking to your Author. Answer their questions to help them write you be
   );
 };
 
+// Import comprehensive tools - legacy agentTools kept for backward compatibility
+import { 
+  ALL_AGENT_TOOLS, 
+  VOICE_SAFE_TOOLS, 
+  QUICK_TOOLS,
+  NAVIGATION_TOOLS,
+  EDITING_TOOLS,
+  ANALYSIS_TOOLS,
+  UI_CONTROL_TOOLS,
+  KNOWLEDGE_TOOLS,
+  GENERATION_TOOLS,
+} from './agentTools';
+
+// Re-export for convenience
+export { 
+  ALL_AGENT_TOOLS, 
+  VOICE_SAFE_TOOLS, 
+  QUICK_TOOLS,
+  NAVIGATION_TOOLS,
+  EDITING_TOOLS,
+  ANALYSIS_TOOLS,
+  UI_CONTROL_TOOLS,
+  KNOWLEDGE_TOOLS,
+  GENERATION_TOOLS,
+};
+
+// Legacy tool set (backward compatibility) - use ALL_AGENT_TOOLS for full functionality
 export const agentTools: FunctionDeclaration[] = [
   {
     name: 'update_manuscript',

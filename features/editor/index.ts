@@ -20,6 +20,13 @@ export { useAutoResize } from './hooks/useAutoResize';
 export { useBranching, type UseBranchingOptions, type UseBranchingResult } from './hooks/useBranching';
 export { useInlineComments, type UseInlineCommentsOptions, type UseInlineCommentsResult } from './hooks/useInlineComments';
 export { useDocumentHistory } from './hooks/useDocumentHistory';
+export { 
+  useChunkIndex, 
+  useChunkIndexSync,
+  type UseChunkIndexOptions,
+  type UseChunkIndexReturn,
+  type ChunkIndexState,
+} from './hooks/useChunkIndex';
 
 // Extensions
 export { CommentMark } from './extensions/CommentMark';

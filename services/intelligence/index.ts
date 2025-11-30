@@ -16,6 +16,16 @@ import {
   ManuscriptDelta,
   ProcessingConfig,
   DEFAULT_PROCESSING_CONFIG,
+  // Chunk index types
+  ChunkId,
+  ChunkStatus,
+  ChunkLevel,
+  ChunkRecord,
+  ChunkAnalysis,
+  AggregateSummary,
+  ChunkEdit,
+  ChunkJob,
+  ChunkIndexState,
 } from '../../types/intelligence';
 
 // Component exports
@@ -30,6 +40,10 @@ export * from './cache';
 export * from './contradictionDetector';
 export * from './narrativeArc';
 
+// Chunk index system
+export * from './chunkIndex';
+export * from './chunkManager';
+
 // Type exports
 export type {
   ManuscriptIntelligence,
@@ -40,6 +54,16 @@ export type {
   StyleFingerprint,
   AttentionHeatmap,
   ManuscriptDelta,
+  // Chunk index types
+  ChunkId,
+  ChunkStatus,
+  ChunkLevel,
+  ChunkRecord,
+  ChunkAnalysis,
+  AggregateSummary,
+  ChunkEdit,
+  ChunkJob,
+  ChunkIndexState,
 };
 
 // Import component functions

@@ -13,3 +13,10 @@ export { AIPresenceOrb, type OrbStatus, type AIPresenceOrbProps } from './compon
 // Hooks
 export { useAgenticEditor, type EditorActions, type UseAgenticEditorOptions, type UseAgenticEditorResult } from './hooks/useAgenticEditor';
 export { useAgentService, type ToolActionHandler, type AgentState, type UseAgentServiceOptions, type AgentServiceResult } from './hooks/useAgentService';
+export { 
+  useAgentOrchestrator, 
+  type AgentMode, 
+  type AgentOrchestratorState, 
+  type UseAgentOrchestratorOptions, 
+  type AgentOrchestratorResult 
+} from './hooks/useAgentOrchestrator';

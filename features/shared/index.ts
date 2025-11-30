@@ -23,6 +23,16 @@ export {
 
 export { UsageProvider, useUsage } from './context/UsageContext';
 
+// AppBrain exports
+export { 
+  AppBrainProvider, 
+  useAppBrain,
+  useAppBrainState,
+  useAppBrainActions,
+  useAppBrainContext,
+  type AppBrainValue,
+} from './context/AppBrainContext';
+
 // Hooks
 export { useQuillAIEngine, type PendingDiff } from './hooks/useDraftSmithEngine';
 export { useManuscriptIndexer } from './hooks/useManuscriptIndexer';
