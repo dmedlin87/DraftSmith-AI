@@ -7,6 +7,12 @@
 
 import { AppBrainState, AppBrainContext } from './types';
 import { eventBus } from './eventBus';
+import {
+  getMemoriesForContext,
+  getActiveGoals,
+  formatMemoriesForPrompt,
+  formatGoalsForPrompt,
+} from '../memory';
 
 /**
  * Build full context string for agent system prompt
@@ -198,6 +204,13 @@ export const buildAgentContext = (state: AppBrainState): string => {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // AGENT MEMORY (async section - placeholder, populated separately)
+  // ─────────────────────────────────────────────────────────────────────────
+  // Memory is injected via buildAgentContextWithMemory() for async retrieval
+  ctx += `[AGENT MEMORY]\n`;
+  ctx += `(Memory context loaded separately - see buildAgentContextWithMemory)\n\n`;
+
+  // ─────────────────────────────────────────────────────────────────────────
   // SESSION STATE
   // ─────────────────────────────────────────────────────────────────────────
   if (session.lastAgentAction) {
@@ -216,6 +229,56 @@ export const buildAgentContext = (state: AppBrainState): string => {
     ctx += `Reading: ~${stats.readingTime} min | `;
     ctx += `Dialogue: ${stats.dialoguePercent}% | `;
     ctx += `Avg Sentence: ${stats.avgSentenceLength} words\n`;
+  }
+
+  return ctx;
+};
+
+/**
+ * Build full context string with memory (async)
+ * This is the primary context builder for agent sessions.
+ */
+export const buildAgentContextWithMemory = async (
+  state: AppBrainState,
+  projectId: string | null
+): Promise<string> => {
+  // Start with base context
+  let ctx = buildAgentContext(state);
+
+  // Replace the placeholder memory section with actual memory
+  if (projectId) {
+    try {
+      const [memories, goals] = await Promise.all([
+        getMemoriesForContext(projectId, { limit: 25 }),
+        getActiveGoals(projectId),
+      ]);
+
+      // Build memory section
+      let memorySection = '[AGENT MEMORY]\n';
+      
+      const formattedMemories = formatMemoriesForPrompt(memories, { maxLength: 1500 });
+      if (formattedMemories) {
+        memorySection += formattedMemories + '\n';
+      } else {
+        memorySection += 'No memories stored yet.\n';
+      }
+
+      const formattedGoals = formatGoalsForPrompt(goals);
+      if (formattedGoals) {
+        memorySection += '\n' + formattedGoals + '\n';
+      }
+
+      memorySection += '\n';
+
+      // Replace placeholder with actual memory content
+      ctx = ctx.replace(
+        /\[AGENT MEMORY\]\n\(Memory context loaded separately - see buildAgentContextWithMemory\)\n\n/,
+        memorySection
+      );
+    } catch (error) {
+      console.warn('Failed to load memory context:', error);
+      // Leave placeholder if memory fails
+    }
   }
 
   return ctx;
@@ -341,6 +404,8 @@ export const buildEditingContext = (state: AppBrainState): string => {
 export const createContextBuilder = (getState: () => AppBrainState): AppBrainContext => {
   return {
     getAgentContext: () => buildAgentContext(getState()),
+    getAgentContextWithMemory: (projectId: string | null) => 
+      buildAgentContextWithMemory(getState(), projectId),
     getCompressedContext: () => buildCompressedContext(getState()),
     getNavigationContext: () => buildNavigationContext(getState()),
     getEditingContext: () => buildEditingContext(getState()),

@@ -101,16 +101,16 @@ export function useAgentOrchestrator(
     }).join('\n-------------------\n');
 
     // Create session with full context
-    chatRef.current = createAgentSession(
-      lore.characters.length > 0 ? { characters: lore.characters, worldRules: lore.worldRules } : undefined,
-      analysis.result || undefined,
-      fullManuscript,
-      currentPersona,
-      critiqueIntensity,
-      experienceLevel,
-      autonomyMode,
-      intelligence.hud || undefined
-    );
+    chatRef.current = createAgentSession({
+      lore: lore.characters.length > 0 ? { characters: lore.characters, worldRules: lore.worldRules } : undefined,
+      analysis: analysis.result || undefined,
+      fullManuscriptContext: fullManuscript,
+      persona: currentPersona,
+      intensity: critiqueIntensity,
+      experience: experienceLevel,
+      autonomy: autonomyMode,
+      intelligenceHUD: intelligence.hud || undefined,
+    });
 
     // Silent initialization
     chatRef.current?.sendMessage({

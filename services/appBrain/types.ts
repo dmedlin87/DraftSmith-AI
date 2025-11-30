@@ -191,6 +191,9 @@ export interface AppBrainContext {
   /** Full context string for agent system prompt */
   getAgentContext: () => string;
   
+  /** Full context with memory (async) - primary builder for agent sessions */
+  getAgentContextWithMemory: (projectId: string | null) => Promise<string>;
+  
   /** Token-efficient compressed context */
   getCompressedContext: () => string;
   

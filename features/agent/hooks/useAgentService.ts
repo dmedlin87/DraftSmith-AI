@@ -13,6 +13,7 @@ import { Lore, Chapter } from '@/types/schema';
 import { Persona, DEFAULT_PERSONAS } from '@/types/personas';
 import { useSettingsStore } from '@/features/settings';
 import { ManuscriptHUD } from '@/types/intelligence';
+import { getMemoriesForContext, getActiveGoals, formatMemoriesForPrompt, formatGoalsForPrompt } from '@/services/memory';
 
 // Tool action handler type
 export type ToolActionHandler = (toolName: string, args: Record<string, unknown>) => Promise<string>;
@@ -30,6 +31,8 @@ export interface UseAgentServiceOptions {
   initialPersona?: Persona;
   intelligenceHUD?: ManuscriptHUD;
   interviewTarget?: CharacterProfile;
+  /** Project ID for memory context - enables persistent memory */
+  projectId?: string | null;
 }
 
 export interface AgentServiceResult {
@@ -54,7 +57,7 @@ export function useAgentService(
   fullText: string,
   options: UseAgentServiceOptions
 ): AgentServiceResult {
-  const { lore, chapters = [], analysis, onToolAction, initialPersona, intelligenceHUD, interviewTarget } = options;
+  const { lore, chapters = [], analysis, onToolAction, initialPersona, intelligenceHUD, interviewTarget, projectId } = options;
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [agentState, setAgentState] = useState<AgentState>({ status: 'idle' });
@@ -70,36 +73,74 @@ export function useAgentService(
   const autonomyMode = useSettingsStore(state => state.autonomyMode);
 
   /**
+   * Build memory context string from stored memories and goals
+   */
+  const buildMemoryContext = useCallback(async (): Promise<string> => {
+    if (!projectId) return '';
+    
+    try {
+      const [memories, goals] = await Promise.all([
+        getMemoriesForContext(projectId, { limit: 25 }),
+        getActiveGoals(projectId),
+      ]);
+
+      let memorySection = '[AGENT MEMORY]\n';
+      
+      const formattedMemories = formatMemoriesForPrompt(memories, { maxLength: 3000 });
+      if (formattedMemories) {
+        memorySection += formattedMemories + '\n';
+      } else {
+        memorySection += '(No stored memories yet.)\n';
+      }
+
+      const formattedGoals = formatGoalsForPrompt(goals);
+      if (formattedGoals) {
+        memorySection += '\n' + formattedGoals + '\n';
+      }
+
+      return memorySection;
+    } catch (error) {
+      console.warn('[AgentService] Failed to fetch memory context:', error);
+      return '';
+    }
+  }, [projectId]);
+
+  /**
    * Initialize or reinitialize the chat session
    */
-  const initSession = useCallback(() => {
+  const initSession = useCallback(async () => {
     // Construct manuscript context for the agent
     const fullManuscript = chapters.map(c => {
       const isActive = c.content === fullText;
       return `[CHAPTER: ${c.title}]${isActive ? " (ACTIVE - You can edit this)" : " (READ ONLY - Request user to switch)"}\n${c.content}\n`;
     }).join('\n-------------------\n');
 
-    chatRef.current = createAgentSession(
+    // Fetch memory context (async)
+    const memoryContext = await buildMemoryContext();
+
+    chatRef.current = createAgentSession({
       lore, 
-      analysis || undefined, 
-      fullManuscript, 
-      currentPersona, 
-      critiqueIntensity,
-      experienceLevel,
-      autonomyMode,
+      analysis: analysis || undefined, 
+      fullManuscriptContext: fullManuscript, 
+      persona: currentPersona, 
+      intensity: critiqueIntensity,
+      experience: experienceLevel,
+      autonomy: autonomyMode,
       intelligenceHUD,
-      interviewTarget
-    );
+      interviewTarget,
+      memoryContext,
+    });
     
-    // Silent initialization message with persona
+    // Silent initialization message with persona and memory status
+    const memoryStatus = memoryContext ? 'Memory loaded.' : 'No memories yet.';
     chatRef.current?.sendMessage({ 
-      message: `I have loaded the manuscript. Total Chapters: ${chapters.length}. Active Chapter Length: ${fullText.length} characters. I am ${currentPersona.name}, ready to help with my ${currentPersona.role} expertise.` 
+      message: `I have loaded the manuscript. Total Chapters: ${chapters.length}. Active Chapter Length: ${fullText.length} characters. ${memoryStatus} I am ${currentPersona.name}, ready to help with my ${currentPersona.role} expertise.` 
     }).catch(console.error);
-  }, [lore, analysis, chapters, fullText, currentPersona, critiqueIntensity, experienceLevel, autonomyMode, intelligenceHUD, interviewTarget]);
+  }, [lore, analysis, chapters, fullText, currentPersona, critiqueIntensity, experienceLevel, autonomyMode, intelligenceHUD, interviewTarget, buildMemoryContext]);
 
   // Initialize session on mount and when dependencies change
   useEffect(() => {
-    initSession();
+    initSession().catch(console.error);
   }, [initSession]);
 
   /**
@@ -235,18 +276,18 @@ export function useAgentService(
   /**
    * Reset the chat session (keeps messages)
    */
-  const resetSession = useCallback(() => {
+  const resetSession = useCallback(async () => {
     abortControllerRef.current?.abort();
-    initSession();
+    await initSession();
     setAgentState({ status: 'idle' });
   }, [initSession]);
 
   /**
    * Clear all messages and reset session
    */
-  const clearMessages = useCallback(() => {
+  const clearMessages = useCallback(async () => {
     setMessages([]);
-    resetSession();
+    await resetSession();
   }, [resetSession]);
 
   /**
@@ -260,12 +301,13 @@ export function useAgentService(
   // Reinitialize when persona changes
   useEffect(() => {
     if (chatRef.current) {
-      initSession();
-      setMessages(prev => [...prev, {
-        role: 'model',
-        text: `${currentPersona.icon} Switching to ${currentPersona.name} mode. ${currentPersona.role}.`,
-        timestamp: new Date()
-      }]);
+      initSession().then(() => {
+        setMessages(prev => [...prev, {
+          role: 'model',
+          text: `${currentPersona.icon} Switching to ${currentPersona.name} mode. ${currentPersona.role}.`,
+          timestamp: new Date()
+        }]);
+      }).catch(console.error);
     }
   }, [currentPersona]); // eslint-disable-line react-hooks/exhaustive-deps
 

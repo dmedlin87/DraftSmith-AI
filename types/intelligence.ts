@@ -201,6 +201,33 @@ export interface StyleFingerprint {
   flags: StyleFlags;
   processedAt: number;
 }
+// ---------------------------------------------------
+// VOICE FINGERPRINT
+// ---------------------------------------------------
+
+export interface VoiceMetrics {
+  avgSentenceLength: number;
+  sentenceVariance: number;
+  contractionRatio: number;
+  questionRatio: number;
+  exclamationRatio: number;
+  latinateRatio: number;
+  uniqueWordCount: number;
+}
+
+export interface VoiceProfile {
+  speakerName: string;
+  metrics: VoiceMetrics;
+  signatureWords: string[];
+  impression: string;
+  lineCount: number;
+}
+
+export interface VoiceFingerprint {
+  profiles: Record<string, VoiceProfile>;
+  consistencyAlerts: string[];
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ATTENTION HEATMAP

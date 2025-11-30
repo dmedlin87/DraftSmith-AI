@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { ChatMessage, EditorContext, AnalysisResult, CharacterProfile } from '@/types';
+
+import { getMemoriesForContext, getActiveGoals, formatMemoriesForPrompt, formatGoalsForPrompt } from '@/services/memory';
 
 
 
@@ -66,6 +68,9 @@ interface ChatInterfaceProps {
 
   onExitInterview?: () => void;
 
+  /** Project ID for memory context - enables persistent memory */
+  projectId?: string | null;
+
 }
 
 
@@ -94,6 +99,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   onExitInterview,
 
+  projectId,
+
 }) => {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -118,9 +125,42 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
 
 
+  /**
+   * Build memory context string from stored memories and goals
+   */
+  const buildMemoryContext = useCallback(async (): Promise<string> => {
+    if (!projectId) return '';
+    
+    try {
+      const [memories, goals] = await Promise.all([
+        getMemoriesForContext(projectId, { limit: 25 }),
+        getActiveGoals(projectId),
+      ]);
+
+      let memorySection = '[AGENT MEMORY]\n';
+      
+      const formattedMemories = formatMemoriesForPrompt(memories, { maxLength: 3000 });
+      if (formattedMemories) {
+        memorySection += formattedMemories + '\n';
+      } else {
+        memorySection += '(No stored memories yet.)\n';
+      }
+
+      const formattedGoals = formatGoalsForPrompt(goals);
+      if (formattedGoals) {
+        memorySection += '\n' + formattedGoals + '\n';
+      }
+
+      return memorySection;
+    } catch (error) {
+      console.warn('[ChatInterface] Failed to fetch memory context:', error);
+      return '';
+    }
+  }, [projectId]);
+
   // Initialize Chat Session
 
-  const initializeSession = () => {
+  const initializeSession = async () => {
 
     // Construct a single string containing all chapters for context
 
@@ -134,33 +174,24 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     }).join('\n-------------------\n');
 
-
+    // Fetch memory context (async)
+    const memoryContext = await buildMemoryContext();
 
     const { critiqueIntensity, experienceLevel, autonomyMode } = useSettingsStore.getState();
 
     const personaForSession = isInterviewMode ? undefined : personaRef.current;
 
-    chatRef.current = createAgentSession(
-
+    chatRef.current = createAgentSession({
       lore, 
-
-      analysis || undefined, 
-
-      fullManuscript, 
-
-      personaForSession, 
-
-      critiqueIntensity,
-
-      experienceLevel,
-
-      autonomyMode,
-
-      undefined,
-
-      interviewTarget || undefined
-
-    );
+      analysis: analysis || undefined, 
+      fullManuscriptContext: fullManuscript, 
+      persona: personaForSession, 
+      intensity: critiqueIntensity,
+      experience: experienceLevel,
+      autonomy: autonomyMode,
+      interviewTarget: interviewTarget || undefined,
+      memoryContext,
+    });
 
     
 
@@ -190,20 +221,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   useEffect(() => {
 
-    initializeSession();
+    initializeSession().catch(console.error);
 
-  }, [lore, analysis, chapters, fullText, interviewTarget]);
+  }, [lore, analysis, chapters, fullText, interviewTarget, buildMemoryContext]);
 
 
 
   // Handle persona change
 
-  const handlePersonaChange = (persona: Persona) => {
+  const handlePersonaChange = async (persona: Persona) => {
     onExitInterview?.();
     setCurrentPersona(persona);
     personaRef.current = persona;
     chatRef.current = null; // Force reinitialization
-    initializeSession();
+    await initializeSession();
 
     setMessages(prev => [...prev, {
 

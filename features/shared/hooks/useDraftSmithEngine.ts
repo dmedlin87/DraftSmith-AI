@@ -4,6 +4,7 @@ import { AnalysisResult } from '@/types';
 import { Lore, ManuscriptIndex } from '@/types/schema';
 import { useUsage } from '../context/UsageContext';
 import { useMagicEditor } from '@/features/editor/hooks/useMagicEditor';
+import { isMemoryTool, executeMemoryTool } from '@/services/gemini/memoryToolHandlers';
 
 // Define proper types
 interface ProjectContext {
@@ -170,9 +171,22 @@ export function useQuillAIEngine({
   }, []);
 
   const handleAgentAction = useCallback(async (
-    action: AgentAction['action'], 
-    params: AgentAction['params']
+    action: AgentAction['action'] | string, 
+    params: AgentAction['params'] | Record<string, unknown>
   ): Promise<string> => {
+    // Check if this is a memory tool first
+    if (isMemoryTool(action)) {
+      if (!projectId) {
+        return 'Error: No project loaded. Memory tools require an active project.';
+      }
+      const result = await executeMemoryTool(
+        action, 
+        params as Record<string, unknown>, 
+        { projectId }
+      );
+      return result ?? 'Error: Unknown memory tool';
+    }
+
     // Get fresh text for agent operations
     const currentText = getCurrentText();
     
@@ -224,7 +238,7 @@ export function useQuillAIEngine({
     }
 
     return "Unknown action.";
-  }, [getCurrentText]);
+  }, [getCurrentText, projectId]);
 
   return {
     state: {

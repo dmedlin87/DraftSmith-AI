@@ -427,6 +427,182 @@ Ask natural language questions like "What are Sarah's relationships?" or "What r
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MEMORY TOOLS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const MEMORY_TOOLS: FunctionDeclaration[] = [
+  {
+    name: 'write_memory_note',
+    description: `Save an observation, decision, or preference to persistent memory.
+Use this to remember:
+- Story decisions ("Seth's motivation is guilt over past failure")
+- Character issues ("Sarah's dialogue feels inconsistent in Act 2")
+- Author preferences ("User prefers concise suggestions")
+- Plot observations ("Foreshadowing setup in chapter 3 needs payoff")
+Notes persist across sessions and inform future interactions.`,
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        text: {
+          type: Type.STRING,
+          description: 'The content of the memory note'
+        },
+        type: {
+          type: Type.STRING,
+          enum: ['observation', 'issue', 'fact', 'plan', 'preference'],
+          description: 'Type of note: observation (noticed something), issue (problem to fix), fact (established truth), plan (action item), preference (user style preference)'
+        },
+        scope: {
+          type: Type.STRING,
+          enum: ['project', 'author'],
+          description: 'project = this manuscript only, author = applies to all projects (user preferences)'
+        },
+        tags: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: 'Tags for retrieval, e.g. ["character:seth", "act2", "dialogue"]. Use character:name format for character-specific notes.'
+        },
+        importance: {
+          type: Type.NUMBER,
+          description: 'Importance score 0-1. Higher = surfaces more often in context. Default 0.5.'
+        }
+      },
+      required: ['text', 'type', 'scope']
+    }
+  },
+  {
+    name: 'search_memory',
+    description: 'Search stored memories by tags or type. Use to recall previous observations, decisions, or issues.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        tags: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: 'Tags to search for (OR search - matches any tag)'
+        },
+        type: {
+          type: Type.STRING,
+          enum: ['observation', 'issue', 'fact', 'plan', 'preference'],
+          description: 'Filter by note type'
+        },
+        scope: {
+          type: Type.STRING,
+          enum: ['project', 'author', 'all'],
+          description: 'Which scope to search. Default is all.'
+        }
+      }
+    }
+  },
+  {
+    name: 'update_memory_note',
+    description: 'Update an existing memory note. Use to refine observations or mark issues as resolved.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        id: {
+          type: Type.STRING,
+          description: 'ID of the note to update'
+        },
+        text: {
+          type: Type.STRING,
+          description: 'New text content (optional)'
+        },
+        importance: {
+          type: Type.NUMBER,
+          description: 'New importance score 0-1 (optional)'
+        },
+        tags: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: 'New tags to replace existing (optional)'
+        }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'delete_memory_note',
+    description: 'Delete a memory note that is no longer relevant.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        id: {
+          type: Type.STRING,
+          description: 'ID of the note to delete'
+        }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'create_goal',
+    description: `Create a tracked goal for this project. Goals persist across sessions and help maintain focus.
+Examples: "Fix Seth's character arc", "Resolve Act 2 pacing issues", "Complete chapter 5 revision"`,
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        title: {
+          type: Type.STRING,
+          description: 'Short title for the goal'
+        },
+        description: {
+          type: Type.STRING,
+          description: 'Detailed description of what needs to be accomplished'
+        }
+      },
+      required: ['title']
+    }
+  },
+  {
+    name: 'update_goal',
+    description: 'Update goal progress or status.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        id: {
+          type: Type.STRING,
+          description: 'ID of the goal to update'
+        },
+        progress: {
+          type: Type.NUMBER,
+          description: 'Progress percentage 0-100'
+        },
+        status: {
+          type: Type.STRING,
+          enum: ['active', 'completed', 'abandoned'],
+          description: 'New status'
+        }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'watch_entity',
+    description: 'Add a character or element to the watchlist for proactive monitoring. The agent will surface relevant notes when you work on chapters containing this entity.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        name: {
+          type: Type.STRING,
+          description: 'Name of the character or element to watch'
+        },
+        reason: {
+          type: Type.STRING,
+          description: 'Why this entity should be watched (e.g., "Has unresolved arc issues")'
+        },
+        priority: {
+          type: Type.STRING,
+          enum: ['low', 'medium', 'high'],
+          description: 'Priority level for surfacing suggestions. Default medium.'
+        }
+      },
+      required: ['name']
+    }
+  }
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GENERATION TOOLS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -529,6 +705,7 @@ export const ALL_AGENT_TOOLS: FunctionDeclaration[] = [
   ...UI_CONTROL_TOOLS,
   ...KNOWLEDGE_TOOLS,
   ...GENERATION_TOOLS,
+  ...MEMORY_TOOLS,
 ];
 
 /** Tools safe for voice mode (no destructive edits without confirmation) */
@@ -551,7 +728,7 @@ export const QUICK_TOOLS: FunctionDeclaration[] = [
 /**
  * Get tools by category
  */
-export const getToolsByCategory = (category: 'navigation' | 'editing' | 'analysis' | 'ui' | 'knowledge' | 'generation'): FunctionDeclaration[] => {
+export const getToolsByCategory = (category: 'navigation' | 'editing' | 'analysis' | 'ui' | 'knowledge' | 'generation' | 'memory'): FunctionDeclaration[] => {
   switch (category) {
     case 'navigation': return NAVIGATION_TOOLS;
     case 'editing': return EDITING_TOOLS;
@@ -559,5 +736,6 @@ export const getToolsByCategory = (category: 'navigation' | 'editing' | 'analysi
     case 'ui': return UI_CONTROL_TOOLS;
     case 'knowledge': return KNOWLEDGE_TOOLS;
     case 'generation': return GENERATION_TOOLS;
+    case 'memory': return MEMORY_TOOLS;
   }
 };

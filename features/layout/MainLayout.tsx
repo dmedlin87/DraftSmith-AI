@@ -306,6 +306,7 @@ export const MainLayout: React.FC = () => {
                   onInitialMessageProcessed={handleInitialMessageProcessed}
                   interviewTarget={interviewTarget}
                   onExitInterview={handleExitInterview}
+                  projectId={currentProject?.id}
                 />
               )}
               {activeTab === SidebarTab.HISTORY && (

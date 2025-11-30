@@ -286,17 +286,33 @@ const buildIntelligenceContext = (hud: ManuscriptHUD): string => {
   return ctx;
 };
 
-export const createAgentSession = (
-  lore?: Lore, 
-  analysis?: AnalysisResult, 
-  fullManuscriptContext?: string, 
-  persona?: Persona,
-  intensity: CritiqueIntensity = DEFAULT_CRITIQUE_INTENSITY,
-  experience: ExperienceLevel = DEFAULT_EXPERIENCE,
-  autonomy: AutonomyMode = DEFAULT_AUTONOMY,
-  intelligenceHUD?: ManuscriptHUD,
-  interviewTarget?: CharacterProfile
-) => {
+export interface CreateAgentSessionOptions {
+  lore?: Lore;
+  analysis?: AnalysisResult;
+  fullManuscriptContext?: string;
+  persona?: Persona;
+  intensity?: CritiqueIntensity;
+  experience?: ExperienceLevel;
+  autonomy?: AutonomyMode;
+  intelligenceHUD?: ManuscriptHUD;
+  interviewTarget?: CharacterProfile;
+  /** Pre-formatted memory context string (from buildAgentContextWithMemory) */
+  memoryContext?: string;
+}
+
+export const createAgentSession = (options: CreateAgentSessionOptions = {}) => {
+  const {
+    lore,
+    analysis,
+    fullManuscriptContext,
+    persona,
+    intensity = DEFAULT_CRITIQUE_INTENSITY,
+    experience = DEFAULT_EXPERIENCE,
+    autonomy = DEFAULT_AUTONOMY,
+    intelligenceHUD,
+    interviewTarget,
+    memoryContext,
+  } = options;
   let loreContext = "";
   if (lore) {
     const chars = lore.characters.map(c => `
@@ -352,6 +368,13 @@ export const createAgentSession = (
   // Append experience and autonomy modifiers
   systemInstruction += `\n\n${experienceModifier}\n\n${autonomyModifier}`;
 
+  // Inject memory context if available
+  if (memoryContext) {
+    systemInstruction = systemInstruction.replace('{{MEMORY_CONTEXT}}', memoryContext);
+  } else {
+    systemInstruction = systemInstruction.replace('{{MEMORY_CONTEXT}}', '[AGENT MEMORY]\n(No memories loaded yet. Use memory tools to start building your knowledge base.)');
+  }
+
   // Inject intelligence HUD context if available
   if (intelligenceHUD) {
     const intelligenceContext = buildIntelligenceContext(intelligenceHUD);
@@ -369,7 +392,33 @@ export const createAgentSession = (
     model: ModelConfig.agent, 
     config: {
       systemInstruction,
-      tools: [{ functionDeclarations: agentTools }]
+      tools: [{ functionDeclarations: ALL_AGENT_TOOLS }]
     }
   });
 };
+
+/**
+ * Legacy wrapper for backward compatibility
+ * @deprecated Use createAgentSession with options object instead
+ */
+export const createAgentSessionLegacy = (
+  lore?: Lore, 
+  analysis?: AnalysisResult, 
+  fullManuscriptContext?: string, 
+  persona?: Persona,
+  intensity: CritiqueIntensity = DEFAULT_CRITIQUE_INTENSITY,
+  experience: ExperienceLevel = DEFAULT_EXPERIENCE,
+  autonomy: AutonomyMode = DEFAULT_AUTONOMY,
+  intelligenceHUD?: ManuscriptHUD,
+  interviewTarget?: CharacterProfile
+) => createAgentSession({
+  lore,
+  analysis,
+  fullManuscriptContext,
+  persona,
+  intensity,
+  experience,
+  autonomy,
+  intelligenceHUD,
+  interviewTarget,
+});

@@ -9,6 +9,7 @@ export { ChatInterface } from './components/ChatInterface';
 export { ActivityFeed } from './components/ActivityFeed';
 export { PersonaSelector } from './components/PersonaSelector';
 export { AIPresenceOrb, type OrbStatus, type AIPresenceOrbProps } from './components/AIPresenceOrb';
+export { ProactiveSuggestions, ProactiveSuggestionsBadge } from './components/ProactiveSuggestions';
 
 // Hooks
 export { useAgenticEditor, type EditorActions, type UseAgenticEditorOptions, type UseAgenticEditorResult } from './hooks/useAgenticEditor';
@@ -20,3 +21,14 @@ export {
   type UseAgentOrchestratorOptions, 
   type AgentOrchestratorResult 
 } from './hooks/useAgentOrchestrator';
+export { 
+  useProactiveSuggestions, 
+  type UseProactiveSuggestionsOptions, 
+  type UseProactiveSuggestionsResult 
+} from './hooks/useProactiveSuggestions';
+export { 
+  useMemoryIntelligence, 
+  type UseMemoryIntelligenceOptions, 
+  type UseMemoryIntelligenceResult,
+  type MemoryHealthStats,
+} from './hooks/useMemoryIntelligence';
