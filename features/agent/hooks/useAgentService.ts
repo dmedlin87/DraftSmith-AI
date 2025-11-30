@@ -8,10 +8,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Chat, FunctionCall } from "@google/genai";
 import { createAgentSession } from '@/services/gemini/agent';
-import { ChatMessage, EditorContext, AnalysisResult } from '@/types';
+import { ChatMessage, EditorContext, AnalysisResult, CharacterProfile } from '@/types';
 import { Lore, Chapter } from '@/types/schema';
 import { Persona, DEFAULT_PERSONAS } from '@/types/personas';
 import { useSettingsStore } from '@/features/settings';
+import { ManuscriptHUD } from '@/types/intelligence';
 
 // Tool action handler type
 export type ToolActionHandler = (toolName: string, args: Record<string, unknown>) => Promise<string>;
@@ -27,6 +28,8 @@ export interface UseAgentServiceOptions {
   analysis?: AnalysisResult | null;
   onToolAction: ToolActionHandler;
   initialPersona?: Persona;
+  intelligenceHUD?: ManuscriptHUD;
+  interviewTarget?: CharacterProfile;
 }
 
 export interface AgentServiceResult {
@@ -51,7 +54,7 @@ export function useAgentService(
   fullText: string,
   options: UseAgentServiceOptions
 ): AgentServiceResult {
-  const { lore, chapters = [], analysis, onToolAction, initialPersona } = options;
+  const { lore, chapters = [], analysis, onToolAction, initialPersona, intelligenceHUD, interviewTarget } = options;
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [agentState, setAgentState] = useState<AgentState>({ status: 'idle' });
@@ -83,14 +86,16 @@ export function useAgentService(
       currentPersona, 
       critiqueIntensity,
       experienceLevel,
-      autonomyMode
+      autonomyMode,
+      intelligenceHUD,
+      interviewTarget
     );
     
     // Silent initialization message with persona
     chatRef.current?.sendMessage({ 
       message: `I have loaded the manuscript. Total Chapters: ${chapters.length}. Active Chapter Length: ${fullText.length} characters. I am ${currentPersona.name}, ready to help with my ${currentPersona.role} expertise.` 
     }).catch(console.error);
-  }, [lore, analysis, chapters, fullText, currentPersona, critiqueIntensity, experienceLevel, autonomyMode]);
+  }, [lore, analysis, chapters, fullText, currentPersona, critiqueIntensity, experienceLevel, autonomyMode, intelligenceHUD, interviewTarget]);
 
   // Initialize session on mount and when dependencies change
   useEffect(() => {

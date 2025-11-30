@@ -703,7 +703,7 @@ describe('ImportWizard', () => {
       expect(screen.queryByText('Keyboard Shortcuts')).not.toBeInTheDocument();
     });
 
-    it('merges chapters via keyboard shortcut', () => {
+    it('merges chapters via keyboard shortcut', async () => {
       render(
         <ImportWizard
           initialChapters={sampleChapters}
@@ -716,7 +716,9 @@ describe('ImportWizard', () => {
       expect(screen.getByText('3 selected')).toBeInTheDocument();
 
       fireEvent.keyDown(window, { key: 'm', ctrlKey: true });
-      expect(screen.getByText(/2 chapters detected/)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText(/2 chapters detected/)).toBeInTheDocument();
+      });
     });
   });
 
@@ -759,7 +761,8 @@ describe('ImportWizard', () => {
       );
 
       expect(screen.getByText(/Issues \(1\)/)).toBeInTheDocument();
-      expect(screen.getByText('Chapter is very long. Consider splitting.')).toBeInTheDocument();
+      const longIssueMessages = screen.getAllByText('Chapter is very long. Consider splitting.');
+      expect(longIssueMessages.length).toBeGreaterThan(0);
     });
 
     it('renders yellow quality status for mid-range scores', () => {

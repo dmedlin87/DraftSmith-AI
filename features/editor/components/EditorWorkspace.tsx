@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEditor, useEngine, findQuoteRange } from '@/features/shared';
+import { useEditor, useEngine, findQuoteRange, useManuscriptIntelligence } from '@/features/shared';
 import { useProjectStore } from '@/features/project';
 import { RichTextEditor } from './RichTextEditor';
 import { MagicBar } from './MagicBar';
@@ -77,6 +77,25 @@ export const EditorWorkspace: React.FC = () => {
 
   const activeChapter = getActiveChapter();
 
+  // Intelligence layer - provides deterministic context to AI
+  const {
+    intelligence,
+    hud,
+    instantMetrics,
+    isProcessing: isIntelligenceProcessing,
+    updateText: updateIntelligenceText,
+    updateCursor,
+  } = useManuscriptIntelligence({
+    chapterId: activeChapter?.id || 'default',
+    initialText: currentText,
+  });
+
+  // Sync text changes to intelligence layer
+  const handleTextUpdate = useCallback((newText: string) => {
+    updateText(newText);
+    updateIntelligenceText(newText, 0); // Cursor offset updated separately
+  }, [updateText, updateIntelligenceText]);
+
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
   const [isHeaderHovered, setIsHeaderHovered] = useState(false);
 
@@ -108,8 +127,27 @@ export const EditorWorkspace: React.FC = () => {
       color: string;
       title: string;
     }> = [];
+    
+    // Use intelligence heatmap hotspots for highlighting
+    if (hud.prioritizedIssues.length > 0) {
+      hud.prioritizedIssues.forEach((issue) => {
+        const color = issue.severity > 0.7 
+          ? "var(--error-500)" 
+          : issue.severity > 0.4 
+            ? "var(--warning-500)" 
+            : "var(--magic-500)";
+        highlights.push({
+          start: issue.offset,
+          end: issue.offset + 100, // Approximate range
+          color,
+          title: issue.description,
+        });
+      });
+    }
+    
+    // Fallback to legacy analysis if available and no intelligence highlights
     const analysis: AnalysisResult = activeChapter?.lastAnalysis;
-    if (analysis) {
+    if (highlights.length === 0 && analysis) {
       analysis.plotIssues?.forEach((issue) => {
         if (issue.quote) {
           const range = findQuoteRange(currentText, issue.quote);
@@ -141,7 +179,7 @@ export const EditorWorkspace: React.FC = () => {
       });
     }
     return highlights;
-  }, [activeChapter, currentText]);
+  }, [hud.prioritizedIssues, activeChapter, currentText]);
 
   const [activeComment, setActiveComment] = useState<
     (InlineComment & { position: { top: number; left: number } }) | null
@@ -213,9 +251,14 @@ export const EditorWorkspace: React.FC = () => {
 
             <div className="flex items-center gap-4">
               <span className="text-[var(--text-sm)] text-[var(--ink-400)] font-medium">
-                {currentText.split(/\s+/).filter((w) => w.length > 0).length}{" "}
+                {instantMetrics.wordCount}{" "}
                 words
               </span>
+              {isIntelligenceProcessing && (
+                <span className="text-[var(--text-xs)] text-[var(--magic-500)]">
+                  analyzing...
+                </span>
+              )}
               <button
                 onClick={engineActions.runAnalysis}
                 disabled={engineState.isAnalyzing}
@@ -264,7 +307,7 @@ export const EditorWorkspace: React.FC = () => {
           <RichTextEditor
             key={activeChapter?.id || "editor"}
             content={currentText}
-            onUpdate={updateText}
+            onUpdate={handleTextUpdate}
             onSelectionChange={setSelectionState}
             setEditorRef={setEditor}
             activeHighlight={activeHighlight}
