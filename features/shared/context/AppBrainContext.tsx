@@ -161,6 +161,18 @@ export const AppBrainProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     hud,
   ]);
 
+  const editMutexRef = useRef<Promise<unknown> | null>(null);
+
+  const runExclusiveEdit = async <T,>(fn: () => Promise<T>): Promise<T> => {
+    const queue = editMutexRef.current ?? Promise.resolve();
+    const next = queue.then(fn);
+    editMutexRef.current = next.then(
+      () => undefined,
+      () => undefined
+    );
+    return next;
+  };
+
   // Build actions
   const actions = useMemo<AppBrainActions>(() => ({
     // Navigation
@@ -284,32 +296,40 @@ export const AppBrainProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     // Editing
     updateManuscript: async (params: UpdateManuscriptParams) => {
-      const { searchText, replacementText, description } = params;
-      
-      if (!editor.currentText.includes(searchText)) {
-        return `Error: Could not find "${searchText.slice(0, 50)}..." in the document.`;
-      }
-      
-      const newText = editor.currentText.replace(searchText, replacementText);
-      editor.commit(newText, description, 'Agent');
-      
-      return `Successfully updated: ${description}`;
+      return runExclusiveEdit(async () => {
+        const { searchText, replacementText, description } = params;
+        
+        if (!editor.currentText.includes(searchText)) {
+          return `Error: Could not find "${searchText.slice(0, 50)}..." in the document.`;
+        }
+        
+        const newText = editor.currentText.replace(searchText, replacementText);
+        editor.commit(newText, description, 'Agent');
+        
+        return `Successfully updated: ${description}`;
+      });
     },
     
     appendText: async (text: string, description: string) => {
-      const newText = editor.currentText + '\n\n' + text;
-      editor.commit(newText, description, 'Agent');
-      return `Appended text: ${description}`;
+      return runExclusiveEdit(async () => {
+        const newText = editor.currentText + '\n\n' + text;
+        editor.commit(newText, description, 'Agent');
+        return `Appended text: ${description}`;
+      });
     },
     
     undo: async () => {
-      const success = editor.undo();
-      return success ? 'Undid the last change' : 'Nothing to undo';
+      return runExclusiveEdit(async () => {
+        const success = editor.undo();
+        return success ? 'Undid the last change' : 'Nothing to undo';
+      });
     },
     
     redo: async () => {
-      const success = editor.redo();
-      return success ? 'Redid the last change' : 'Nothing to redo';
+      return runExclusiveEdit(async () => {
+        const success = editor.redo();
+        return success ? 'Redid the last change' : 'Nothing to redo';
+      });
     },
     
     // Analysis
@@ -488,10 +508,16 @@ To get detailed feedback, the selection would be sent to the analysis service.`;
     },
   }), [editor, analysisCtx, projectStore, intelligence]);
 
-  // Create context builders
+  const stateRef = useRef<AppBrainState>(state);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  // Create context builders using ref-based getter to avoid stale closures
   const contextBuilders = useMemo(() => 
-    createContextBuilder(() => state),
-    [state]
+    createContextBuilder(() => stateRef.current),
+    []
   );
 
   const value = useMemo<AppBrainValue>(() => ({

@@ -129,6 +129,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const isInterviewMode = Boolean(interviewTarget);
 
+  const initGenRef = useRef(0);
+
 
 
   /**
@@ -166,10 +168,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   // Initialize Chat Session
 
-  const initializeSession = async () => {
+  const initializeSession = useCallback(async () => {
     // FIX: Clear session memory tracking when session reinitializes
     // This ensures stale session state doesn't carry over
     clearSessionMemories();
+
+    const gen = ++initGenRef.current;
 
     // Construct a single string containing all chapters for context
 
@@ -211,6 +215,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     });
 
     await agent.initialize();
+    if (gen !== initGenRef.current) return; // Stale init, abort
+
     chatRef.current = agent;
 
     // Initialize with instructions but no visible message
@@ -222,7 +228,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       message: intro,
     } as any);
 
-  };
+  }, [analysis, buildMemoryContext, chapters, fullText, interviewTarget, isDeepMode, isInterviewMode, lore, projectId, voiceFingerprint]);
 
 
 
@@ -230,13 +236,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     initializeSession().catch(console.error);
 
-  }, [lore, analysis, chapters, fullText, interviewTarget, buildMemoryContext, isDeepMode, voiceFingerprint]);
+  }, [initializeSession]);
 
 
 
   // Handle persona change
 
-  const handlePersonaChange = async (persona: Persona) => {
+  const handlePersonaChange = useCallback(async (persona: Persona) => {
     onExitInterview?.();
     setCurrentPersona(persona);
     personaRef.current = persona;
@@ -249,7 +255,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       text: `${persona.icon} Switching to ${persona.name} mode. ${persona.role}.`,
       timestamp: new Date()
     }]);
-  };
+  }, [initializeSession, onExitInterview]);
 
   // Scroll to bottom
   useEffect(() => {

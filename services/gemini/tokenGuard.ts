@@ -26,18 +26,21 @@ export function checkTokenLimit(
   reserveTokens: number = 4000 // Reserve for response
 ): TokenCheckResult {
   const limit = TokenLimits[model] ?? 32_000;
-  const availableTokens = limit - reserveTokens;
+  const rawLimit = limit;
+  const availableTokens = Math.max(0, rawLimit - reserveTokens);
   const estimatedTokens = estimateTokens(text);
   const overflow = Math.max(0, estimatedTokens - availableTokens);
   
   const result: TokenCheckResult = {
-    valid: overflow === 0,
+    valid: overflow === 0 && availableTokens > 0,
     estimatedTokens,
     limit: availableTokens,
     overflow,
   };
   
-  if (!result.valid) {
+  if (availableTokens === 0) {
+    result.suggestion = 'Token configuration leaves no room for input.';
+  } else if (!result.valid) {
     const charsToRemove = overflow * ApiDefaults.charsPerToken;
     result.suggestion = `Input exceeds limit by ~${overflow.toLocaleString()} tokens. ` +
       `Consider removing ~${charsToRemove.toLocaleString()} characters.`;
@@ -56,8 +59,13 @@ export function truncateToLimit(
   reserveTokens: number = 4000
 ): { text: string; truncated: boolean; removedChars: number } {
   const limit = TokenLimits[model] ?? 32_000;
-  const availableTokens = limit - reserveTokens;
+  const rawLimit = limit;
+  const availableTokens = Math.max(0, rawLimit - reserveTokens);
   const maxChars = availableTokens * ApiDefaults.charsPerToken;
+  
+  if (maxChars <= 0) {
+    return { text: '', truncated: true, removedChars: text.length };
+  }
   
   if (text.length <= maxChars) {
     return { text, truncated: false, removedChars: 0 };

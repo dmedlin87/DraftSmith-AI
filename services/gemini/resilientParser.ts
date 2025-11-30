@@ -122,6 +122,14 @@ export interface ParseOptions {
   onFailure?: (context: ParseFailureContext) => void;
 }
 
+function safeReportError(error: unknown, context?: unknown): void {
+  try {
+    reportError(error, (context as ErrorContext | undefined));
+  } catch {
+    // Swallow telemetry errors to avoid crashing the app
+  }
+}
+
 /**
  * Safely parses JSON from an LLM response with automatic sanitization.
  * 
@@ -142,7 +150,7 @@ export function safeParseJson<T>(
       snippet,
       sanitized,
     };
-    reportError(new Error(errorMessage), context);
+    safeReportError(new Error(errorMessage), context);
     options?.onFailure?.(context);
   };
 
@@ -218,7 +226,7 @@ export function safeParseJsonWithValidation<T>(
     };
   }
 
-  reportError(new Error('Response does not match expected schema'), {
+  safeReportError(new Error('Response does not match expected schema'), {
     rawResponse: result.rawResponse,
   });
   
@@ -245,4 +253,4 @@ export const validators = {
   isVariationsResponse: (data: unknown): data is { variations: string[] } =>
     validators.hasProperty(data, 'variations') && Array.isArray(data.variations),
 };
-import { reportError } from '@/services/telemetry/errorReporter';
+import { reportError, ErrorContext } from '@/services/telemetry/errorReporter';

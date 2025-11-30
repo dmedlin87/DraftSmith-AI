@@ -55,11 +55,17 @@ export const useProjectStore = create<ProjectState>((set, get) => {
         const latest = latestChapterContent.get(chapterId);
         if (!latest) return;
 
-        await db.chapters.update(chapterId, { content: latest.content, updatedAt: latest.updatedAt });
-        
-        const { currentProject } = get();
-        if (currentProject) {
-            await db.projects.update(currentProject.id, { updatedAt: latest.updatedAt });
+        const chapter = await db.chapters.get(chapterId);
+        const projectId = chapter?.projectId;
+
+        if (!chapter || !projectId) {
+          // Fallback: still persist chapter content if we can't resolve project
+          await db.chapters.update(chapterId, { content: latest.content, updatedAt: latest.updatedAt });
+        } else {
+          await db.transaction('rw', db.projects, db.chapters, async () => {
+            await db.chapters.update(chapterId, { content: latest.content, updatedAt: latest.updatedAt });
+            await db.projects.update(projectId, { updatedAt: latest.updatedAt });
+          });
         }
       } catch (error) {
         console.error('[ProjectStore] Failed to persist chapter content', error);
@@ -122,8 +128,7 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    await db.projects.add(newProject);
-
+    
     // 2. Process Chapters (Parsing happens in UI/Wizard now)
     const chaptersToCreate: Chapter[] = chapters.map((pc, index) => ({
         id: crypto.randomUUID(),
@@ -134,7 +139,12 @@ export const useProjectStore = create<ProjectState>((set, get) => {
         updatedAt: Date.now()
     }));
 
-    await db.chapters.bulkAdd(chaptersToCreate);
+    await db.transaction('rw', db.projects, db.chapters, async () => {
+      await db.projects.add(newProject);
+      if (chaptersToCreate.length > 0) {
+        await db.chapters.bulkAdd(chaptersToCreate);
+      }
+    });
 
     // 3. Update State
     set(state => ({ projects: [newProject, ...state.projects] }));

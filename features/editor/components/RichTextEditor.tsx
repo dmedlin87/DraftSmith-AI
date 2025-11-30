@@ -230,8 +230,9 @@ const RichTextEditorComponent: React.FC<RichTextEditorProps> = ({
   }, [editor, AnalysisDecorations, CommentDecorations]);
 
   useEffect(() => {
+    // Parent must memoize setEditorRef to avoid render loops
     setEditorRef(editor);
-  }, [editor, setEditorRef]);
+  }, [editor]);
 
   return (
     <div 
