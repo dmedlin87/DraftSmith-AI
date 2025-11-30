@@ -163,7 +163,7 @@ describe('styleAnalyzer', () => {
       
       if (result.flags.passiveVoiceInstances.length > 0) {
         expect(result.flags.passiveVoiceInstances[0].offset).toBeDefined();
-        expect(result.flags.passiveVoiceInstances[0].phrase).toBeDefined();
+        expect(result.flags.passiveVoiceInstances[0].quote).toBeDefined();
       }
     });
   });

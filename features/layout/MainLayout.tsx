@@ -52,6 +52,7 @@ export const MainLayout: React.FC = () => {
   const [isToolsCollapsed, setIsToolsCollapsed] = useState(false);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
   const [selectedGraphCharacter, setSelectedGraphCharacter] = useState<CharacterProfile | null>(null);
+  const [interviewTarget, setInterviewTarget] = useState<CharacterProfile | null>(null);
   const [isExitZenHovered, setIsExitZenHovered] = useState(false);
   const [isHeaderHovered, setIsHeaderHovered] = useState(false);
   const [currentPersonaIndex, setCurrentPersonaIndex] = useState(0);
@@ -106,6 +107,16 @@ export const MainLayout: React.FC = () => {
   const handleSelectGraphCharacter = (character: CharacterProfile) => {
     setSelectedGraphCharacter(character);
     setActiveTab(SidebarTab.LORE);
+  };
+
+  const handleInterviewCharacter = (character: CharacterProfile) => {
+    setInterviewTarget(character);
+    setActiveTab(SidebarTab.CHAT);
+    setIsToolsCollapsed(false);
+  };
+
+  const handleExitInterview = () => {
+    setInterviewTarget(null);
   };
 
   const handleSwitchToEditor = () => {
@@ -293,6 +304,8 @@ export const MainLayout: React.FC = () => {
                   analysis={activeChapter?.lastAnalysis}
                   initialMessage={chatInitialMessage}
                   onInitialMessageProcessed={handleInitialMessageProcessed}
+                  interviewTarget={interviewTarget}
+                  onExitInterview={handleExitInterview}
                 />
               )}
               {activeTab === SidebarTab.HISTORY && (
@@ -306,7 +319,9 @@ export const MainLayout: React.FC = () => {
               {activeTab === SidebarTab.GRAPH && (
                 <KnowledgeGraph onSelectCharacter={handleSelectGraphCharacter} />
               )}
-              {activeTab === SidebarTab.LORE && <LoreManager />}
+              {activeTab === SidebarTab.LORE && (
+                <LoreManager onInterviewCharacter={handleInterviewCharacter} />
+              )}
             </div>
           </motion.aside>
         )}

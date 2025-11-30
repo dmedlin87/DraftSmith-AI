@@ -26,6 +26,9 @@ export * from './styleAnalyzer';
 export * from './heatmapBuilder';
 export * from './contextBuilder';
 export * from './deltaTracker';
+export * from './cache';
+export * from './contradictionDetector';
+export * from './narrativeArc';
 
 // Type exports
 export type {
@@ -47,6 +50,13 @@ import { analyzeStyle } from './styleAnalyzer';
 import { buildHeatmap } from './heatmapBuilder';
 import { buildHUD, buildAIContextString, buildCompressedContext } from './contextBuilder';
 import { createDelta, createEmptyDelta, hashContent, ChangeHistory } from './deltaTracker';
+import { 
+  parseStructureCached, 
+  extractEntitiesCached, 
+  analyzeStyleCached,
+  getIntelligenceCache,
+  clearIntelligenceCache,
+} from './cache';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FULL PROCESSING
@@ -79,6 +89,59 @@ export const processManuscript = (
   const style = analyzeStyle(text);
   
   // 5. Heatmap building
+  const heatmap = buildHeatmap(text, structural, entities, timeline, style);
+  
+  // 6. Delta tracking
+  const delta = previousText && previousIntelligence
+    ? createDelta(previousText, text, previousIntelligence.entities, previousIntelligence.timeline)
+    : createEmptyDelta(text);
+  
+  // 7. Build initial HUD (cursor at 0)
+  const hud = buildHUD(
+    { chapterId, structural, entities, timeline, style, heatmap, delta, hud: null as any },
+    0
+  );
+  
+  return {
+    chapterId,
+    structural,
+    entities,
+    timeline,
+    style,
+    heatmap,
+    delta,
+    hud,
+  };
+};
+
+/**
+ * Process manuscript with caching enabled
+ * Uses content-addressed cache for structural, entity, and style analysis
+ */
+export const processManuscriptCached = (
+  text: string,
+  chapterId: string,
+  previousText?: string,
+  previousIntelligence?: ManuscriptIntelligence
+): ManuscriptIntelligence => {
+  // 1. Structural parsing (cached)
+  const structural = parseStructureCached(text);
+  
+  // 2. Entity extraction (cached)
+  const entities = extractEntitiesCached(
+    text,
+    structural.paragraphs,
+    structural.dialogueMap,
+    chapterId
+  );
+  
+  // 3. Timeline building (not cached - depends on scenes)
+  const timeline = buildTimeline(text, structural.scenes, chapterId);
+  
+  // 4. Style analysis (cached)
+  const style = analyzeStyleCached(text);
+  
+  // 5. Heatmap building (not cached - depends on all components)
   const heatmap = buildHeatmap(text, structural, entities, timeline, style);
   
   // 6. Delta tracking

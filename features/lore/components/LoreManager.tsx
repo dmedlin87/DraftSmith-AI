@@ -8,6 +8,7 @@ interface CharacterEditorProps {
   onSave: (character: CharacterProfile) => void;
   onCancel: () => void;
   onDelete?: () => void;
+  onInterview?: (character: CharacterProfile) => void;
 }
 
 const CharacterEditor: React.FC<CharacterEditorProps> = ({ character, onSave, onCancel, onDelete }) => {
@@ -180,6 +181,17 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ character, onSave, on
         />
       </div>
 
+      {onInterview && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => onInterview(form)}
+            className="text-[11px] px-3 py-1 border border-[var(--magic-200)] text-[var(--magic-600)] rounded-full hover:bg-[var(--magic-50)] transition-colors"
+          >
+            💬 Interview {form.name || 'Character'}
+          </button>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex items-center gap-2 pt-2 border-t border-[var(--ink-100)]">
         <button
@@ -210,10 +222,11 @@ const CharacterEditor: React.FC<CharacterEditorProps> = ({ character, onSave, on
 interface CharacterCardProps {
   character: CharacterProfile;
   onEdit: () => void;
+  onInterview?: () => void;
   isSelected: boolean;
 }
 
-const CharacterCard: React.FC<CharacterCardProps> = ({ character, onEdit, isSelected }) => (
+const CharacterCard: React.FC<CharacterCardProps> = ({ character, onEdit, onInterview, isSelected }) => (
   <div
     onClick={onEdit}
     className={`
@@ -237,10 +250,27 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character, onEdit, isSele
         )}
       </div>
     </div>
+    {onInterview && (
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onInterview();
+          }}
+          className="text-xs px-3 py-1 border border-[var(--magic-200)] text-[var(--magic-600)] rounded-full hover:bg-[var(--magic-50)] transition-colors"
+        >
+          💬 Interview {character.name}
+        </button>
+      </div>
+    )}
   </div>
 );
 
-export const LoreManager: React.FC = () => {
+interface LoreManagerProps {
+  onInterviewCharacter?: (character: CharacterProfile) => void;
+}
+
+export const LoreManager: React.FC<LoreManagerProps> = ({ onInterviewCharacter }) => {
   const { currentProject, updateProjectLore } = useProjectStore();
   const [activeTab, setActiveTab] = useState<'characters' | 'world'>('characters');
   const [editingCharacter, setEditingCharacter] = useState<CharacterProfile | null>(null);
@@ -266,6 +296,12 @@ export const LoreManager: React.FC = () => {
     };
 
     updateProjectLore(currentProject.id, newLore);
+  };
+
+  const beginInterview = (character: CharacterProfile) => {
+    if (onInterviewCharacter) {
+      onInterviewCharacter(character);
+    }
   };
 
   const handleSaveCharacter = (character: CharacterProfile) => {
@@ -377,6 +413,7 @@ export const LoreManager: React.FC = () => {
                   setIsCreatingNew(false);
                 }}
                 onDelete={isCreatingNew ? undefined : handleDeleteCharacter}
+                onInterview={beginInterview}
               />
             </div>
           ) : (
@@ -402,12 +439,13 @@ export const LoreManager: React.FC = () => {
               ) : (
                 <>
                   {characters.map((char, i) => (
-                    <CharacterCard
-                      key={i}
-                      character={char}
-                      onEdit={() => setEditingCharacter(char)}
-                      isSelected={false}
-                    />
+                  <CharacterCard
+                    key={i}
+                    character={char}
+                    onEdit={() => setEditingCharacter(char)}
+                    onInterview={() => beginInterview(char)}
+                    isSelected={false}
+                  />
                   ))}
                   <button
                     onClick={handleCreateNew}

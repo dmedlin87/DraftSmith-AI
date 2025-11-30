@@ -98,10 +98,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, [lore, analysis, chapters, fullText, interviewTarget]);
 
   // Handle persona change
-  const handlePersonaChange = (persona: Persona) => {
-    setCurrentPersona(persona);
-    personaRef.current = persona;
-    chatRef.current = null; // Force reinitialization
+  const handlePersonaChange = (persona: Persona) => {
+    onExitInterview?.();
+    setCurrentPersona(persona);
+    personaRef.current = persona;
+    chatRef.current = null; // Force reinitialization
     initializeSession();
     setMessages(prev => [...prev, {
       role: 'model',

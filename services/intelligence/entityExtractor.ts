@@ -418,6 +418,141 @@ const detectAliases = (text: string, entities: EntityNode[]): void => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PRONOUN RESOLUTION
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CoReference {
+  pronoun: string;
+  offset: number;
+  resolvedTo: string;  // Entity ID
+  confidence: number;
+}
+
+const MALE_PRONOUNS = new Set(['he', 'him', 'his', 'himself']);
+const FEMALE_PRONOUNS = new Set(['she', 'her', 'hers', 'herself']);
+const NEUTRAL_PRONOUNS = new Set(['they', 'them', 'their', 'theirs', 'themselves']);
+
+// Infer gender from context or common name patterns
+const inferGender = (entity: EntityNode, text: string): 'male' | 'female' | 'neutral' | 'unknown' => {
+  const nameLower = entity.name.toLowerCase();
+  
+  // Check common female name endings
+  const femaleEndings = ['a', 'ia', 'ina', 'ella', 'anna', 'ette', 'elle'];
+  const maleEndings = ['ius', 'us', 'son', 'ton'];
+  
+  for (const ending of femaleEndings) {
+    if (nameLower.endsWith(ending)) return 'female';
+  }
+  for (const ending of maleEndings) {
+    if (nameLower.endsWith(ending)) return 'male';
+  }
+  
+  // Check context around mentions for gendered pronouns
+  for (const mention of entity.mentions.slice(0, 5)) {
+    const context = text.slice(
+      Math.max(0, mention.offset - 100),
+      Math.min(text.length, mention.offset + entity.name.length + 100)
+    ).toLowerCase();
+    
+    // Count gendered pronouns near this entity
+    const maleCount = [...MALE_PRONOUNS].filter(p => context.includes(p)).length;
+    const femaleCount = [...FEMALE_PRONOUNS].filter(p => context.includes(p)).length;
+    
+    if (maleCount > femaleCount + 1) return 'male';
+    if (femaleCount > maleCount + 1) return 'female';
+  }
+  
+  return 'unknown';
+};
+
+const resolvePronoun = (
+  pronoun: string,
+  offset: number,
+  recentEntities: EntityNode[],
+  text: string
+): CoReference | null => {
+  const pronounLower = pronoun.toLowerCase();
+  
+  // Filter candidates by gender
+  let candidates = recentEntities.filter(e => e.type === 'character');
+  
+  if (MALE_PRONOUNS.has(pronounLower)) {
+    const genderedCandidates = candidates.filter(e => {
+      const gender = inferGender(e, text);
+      return gender === 'male' || gender === 'unknown';
+    });
+    if (genderedCandidates.length > 0) candidates = genderedCandidates;
+  } else if (FEMALE_PRONOUNS.has(pronounLower)) {
+    const genderedCandidates = candidates.filter(e => {
+      const gender = inferGender(e, text);
+      return gender === 'female' || gender === 'unknown';
+    });
+    if (genderedCandidates.length > 0) candidates = genderedCandidates;
+  }
+  
+  if (candidates.length === 0) return null;
+  
+  // Find closest preceding mention
+  let bestCandidate = candidates[0];
+  let bestDistance = Infinity;
+  
+  for (const entity of candidates) {
+    for (const mention of entity.mentions) {
+      // Only consider mentions before this pronoun
+      if (mention.offset < offset) {
+        const distance = offset - mention.offset;
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestCandidate = entity;
+        }
+      }
+    }
+  }
+  
+  // Confidence based on distance
+  const confidence = bestDistance < 100 ? 0.9 : bestDistance < 300 ? 0.7 : 0.5;
+  
+  return {
+    pronoun,
+    offset,
+    resolvedTo: bestCandidate.id,
+    confidence,
+  };
+};
+
+const resolvePronounsInText = (
+  text: string,
+  entities: EntityNode[],
+  chapterId: string
+): CoReference[] => {
+  const coReferences: CoReference[] = [];
+  
+  // Only resolve if we have character entities
+  const characters = entities.filter(e => e.type === 'character');
+  if (characters.length === 0) return coReferences;
+  
+  // Find pronouns in text
+  const pronounPattern = /\b(he|him|his|himself|she|her|hers|herself|they|them|their|theirs|themselves)\b/gi;
+  let match;
+  
+  while ((match = pronounPattern.exec(text)) !== null) {
+    const resolved = resolvePronoun(match[1], match.index, characters, text);
+    if (resolved && resolved.confidence >= 0.5) {
+      coReferences.push(resolved);
+      
+      // Add as mention to the resolved entity
+      const entity = entities.find(e => e.id === resolved.resolvedTo);
+      if (entity) {
+        entity.mentions.push({ offset: match.index, chapterId });
+        entity.mentionCount++;
+      }
+    }
+  }
+  
+  return coReferences;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -450,6 +585,9 @@ export const extractEntities = (
   
   // Detect aliases
   detectAliases(text, nodes);
+  
+  // Resolve pronouns to entities (adds to mention counts)
+  const coReferences = resolvePronounsInText(text, nodes, chapterId);
   
   // Detect relationships
   const edges = detectRelationships(text, nodes, paragraphs, chapterId);

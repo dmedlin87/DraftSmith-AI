@@ -27,6 +27,7 @@ import {
 const DEBOUNCE_DELAY = 150;       // ms after typing stops for debounced processing
 const BACKGROUND_DELAY = 2000;    // ms after typing stops for full processing
 const INSTANT_THROTTLE = 50;      // ms minimum between instant updates
+const USE_WEB_WORKER = true;      // Enable Web Worker for background processing
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOOK INTERFACE
@@ -101,6 +102,9 @@ export const useManuscriptIntelligence = (
   const lastInstantRef = useRef(0);
   const changeHistoryRef = useRef(new ChangeHistory());
   const previousTextRef = useRef<string>('');
+  const workerRef = useRef<Worker | null>(null);
+  const workerRequestIdRef = useRef<string | null>(null);
+  const [processingProgress, setProcessingProgress] = useState(0);
   
   // ─────────────────────────────────────────
   // PROCESSING FUNCTIONS
@@ -133,8 +137,28 @@ export const useManuscriptIntelligence = (
   const runBackgroundProcess = useCallback((text: string, cursorOffset: number) => {
     setProcessingTier('background');
     setIsProcessing(true);
+    setProcessingProgress(0);
     
-    // Use requestIdleCallback for non-blocking processing
+    // Try to use Web Worker for true parallelism
+    if (USE_WEB_WORKER && workerRef.current) {
+      const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      workerRequestIdRef.current = requestId;
+      
+      workerRef.current.postMessage({
+        type: 'PROCESS_FULL',
+        id: requestId,
+        payload: {
+          text,
+          chapterId,
+          previousText: previousTextRef.current,
+          previousIntelligence: intelligence,
+          cursorOffset,
+        },
+      });
+      return; // Worker will handle the result via onmessage
+    }
+    
+    // Fallback: Use requestIdleCallback for non-blocking processing
     const process = () => {
       try {
         const newIntelligence = processManuscript(
@@ -268,11 +292,87 @@ export const useManuscriptIntelligence = (
   // EFFECTS
   // ─────────────────────────────────────────
   
+  // Initialize Web Worker
+  useEffect(() => {
+    if (!USE_WEB_WORKER) return;
+    
+    try {
+      // Create worker - Vite handles bundling with this syntax
+      workerRef.current = new Worker(
+        new URL('../../../services/intelligence/worker.ts', import.meta.url),
+        { type: 'module' }
+      );
+      
+      // Handle worker messages
+      workerRef.current.onmessage = (event) => {
+        const { type, id, payload, progress, error } = event.data;
+        
+        // Ignore messages from old requests
+        if (id !== workerRequestIdRef.current && type !== 'READY') {
+          return;
+        }
+        
+        switch (type) {
+          case 'READY':
+            console.log('[Intelligence] Worker ready');
+            break;
+            
+          case 'PROGRESS':
+            if (progress) {
+              setProcessingProgress(progress.percent);
+            }
+            break;
+            
+          case 'RESULT':
+            if (payload) {
+              const newIntelligence = payload as ManuscriptIntelligence;
+              previousTextRef.current = textRef.current;
+              setIntelligence(newIntelligence);
+              setHud(updateHUDForCursor(newIntelligence, cursorRef.current));
+              setLastProcessedAt(Date.now());
+              setIsProcessing(false);
+              setProcessingTier('idle');
+              setProcessingProgress(100);
+              
+              if (onIntelligenceReady) {
+                onIntelligenceReady(newIntelligence);
+              }
+            }
+            break;
+            
+          case 'ERROR':
+            console.error('[Intelligence] Worker error:', error);
+            setIsProcessing(false);
+            setProcessingTier('idle');
+            break;
+        }
+      };
+      
+      workerRef.current.onerror = (error) => {
+        console.error('[Intelligence] Worker error:', error);
+        // Disable worker on error, fallback to main thread
+        workerRef.current = null;
+      };
+      
+    } catch (err) {
+      console.warn('[Intelligence] Web Worker not available, using main thread');
+      workerRef.current = null;
+    }
+    
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+    };
+  }, [onIntelligenceReady]);
+  
   // Initial processing
   useEffect(() => {
     if (initialText) {
       textRef.current = initialText;
-      runBackgroundProcess(initialText, 0);
+      // Delay initial processing slightly to let worker initialize
+      setTimeout(() => runBackgroundProcess(initialText, 0), 100);
     }
   }, []); // Only on mount
   
@@ -284,6 +384,10 @@ export const useManuscriptIntelligence = (
       }
       if (backgroundTimerRef.current) {
         clearTimeout(backgroundTimerRef.current);
+      }
+      // Cancel any pending worker requests
+      if (workerRef.current && workerRequestIdRef.current) {
+        workerRef.current.postMessage({ type: 'CANCEL', id: workerRequestIdRef.current });
       }
     };
   }, []);
