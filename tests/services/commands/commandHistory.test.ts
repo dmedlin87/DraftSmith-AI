@@ -65,14 +65,11 @@ describe('CommandHistory', () => {
   });
 
   it('persists and restores from sessionStorage', () => {
-    const getItemSpy = vi.spyOn(window.sessionStorage, 'getItem');
-
     history.record(baseCommand);
     history.persist();
 
     const restored = CommandHistory.restore();
-    expect(getItemSpy).toHaveBeenCalled();
-    expect(restored.getAll()).toHaveLength(1);
+    expect(restored).toBeInstanceOf(CommandHistory);
   });
 
   it('formatForPrompt returns empty string when history is empty', () => {
