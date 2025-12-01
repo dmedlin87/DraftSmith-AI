@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useEditor } from './EditorContext';
 
 import { useProjectStore } from '@/features/project';
-import { useQuillAIEngine, type PendingDiff } from '../hooks/useDraftSmithEngine';
-import { useManuscriptIndexer } from '../hooks/useManuscriptIndexer';
+import { useQuillAIEngine, type PendingDiff } from '@/features/shared/hooks/useDraftSmithEngine';
+import { useManuscriptIndexer } from '@/features/shared/hooks/useManuscriptIndexer';
 import { Contradiction } from '@/types/schema';
 
 /**

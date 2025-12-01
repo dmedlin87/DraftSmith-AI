@@ -11,7 +11,7 @@ vi.mock('@/features/shared', () => ({
   findQuoteRange: (...args: unknown[]) => mockFindQuoteRange(...args),
 }));
 
-vi.mock('@/features/shared/context/EditorContext', () => ({
+vi.mock('@/features/core/context/EditorContext', () => ({
   useEditorActions: () => ({
     handleNavigateToIssue: (...args: unknown[]) => mockHandleNavigateToIssue(...args),
   }),

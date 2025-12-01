@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { EditorLayout } from './EditorLayout';
+import { EditorLayout } from '@/features/layout/EditorLayout';
 import { SidebarTab } from '@/types';
 
 interface WorkspaceProps {

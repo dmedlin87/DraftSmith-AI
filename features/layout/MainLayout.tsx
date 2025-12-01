@@ -6,10 +6,10 @@ import { EditorWorkspace } from '@/features/editor';
 import { UploadLayout } from './UploadLayout';
 import { type OrbStatus } from '@/features/agent';
 import { useEngine } from '@/features/shared';
-import { useEditorState, useEditorActions } from '@/features/shared/context/EditorContext';
+import { useEditorState, useEditorActions } from '@/features/core/context/EditorContext';
 import { NavigationRail } from './NavigationRail';
 import { EditorHeader } from './EditorHeader';
-import { ToolsPanel } from './ToolsPanel';
+import { ToolsPanelContainer } from './ToolsPanelContainer';
 import { ZenModeOverlay } from './ZenModeOverlay';
 import { useLayoutStore } from './store/useLayoutStore';
 
@@ -31,15 +31,15 @@ function deriveOrbStatus(isAnalyzing: boolean, isMagicLoading: boolean): OrbStat
  */
 export const MainLayout: React.FC = () => {
   // Contexts - these provide data, not UI state
-  const { currentProject, getActiveChapter, chapters } = useProjectStore((state) => ({
+  const { currentProject, getActiveChapter } = useProjectStore((state) => ({
     currentProject: state.currentProject,
     getActiveChapter: state.getActiveChapter,
-    chapters: state.chapters,
   }));
 
-  const { currentText, selectionRange, history, editor, isZenMode } = useEditorState();
-  const { restore, toggleZenMode } = useEditorActions();
-  const { state: engineState, actions: engineActions } = useEngine();
+  // We still need isZenMode for layout coordination, but not the full editor state
+  const { isZenMode } = useEditorState();
+  const { toggleZenMode } = useEditorActions();
+  const { state: engineState } = useEngine();
 
   // Layout store for UI state
   const { activeView, isSidebarCollapsed, theme, toggleSidebar, setActiveView } = useLayoutStore((state) => ({
@@ -61,13 +61,6 @@ export const MainLayout: React.FC = () => {
   if (!currentProject) {
     return <UploadLayout />;
   }
-
-  // Build editor context for child components
-  const editorContext = {
-    cursorPosition: editor?.state.selection.from || 0,
-    selection: selectionRange,
-    totalLength: currentText.length
-  };
 
   const orbStatus = deriveOrbStatus(engineState.isAnalyzing, engineState.isMagicLoading);
 
@@ -110,21 +103,8 @@ export const MainLayout: React.FC = () => {
         </div>
       )}
 
-      {/* 4. Tools Panel - Handles tab content via useLayoutStore */}
-      <ToolsPanel
-        isZenMode={isZenMode}
-        currentText={currentText}
-        editorContext={editorContext}
-        projectId={currentProject?.id}
-        lore={currentProject?.lore}
-        chapters={chapters}
-        analysis={activeChapter?.lastAnalysis}
-        history={history}
-        isAnalyzing={engineState.isAnalyzing}
-        analysisWarning={engineState.analysisWarning}
-        onAgentAction={engineActions.handleAgentAction}
-        onRestore={restore}
-      />
+      {/* 4. Tools Panel - Now decoupled via Container */}
+      <ToolsPanelContainer isZenMode={isZenMode} />
 
       {/* 5. Zen Mode Overlay - Exit button and hover zones */}
       <ZenModeOverlay isZenMode={isZenMode} toggleZenMode={toggleZenMode} />

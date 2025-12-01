@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEngine, findQuoteRange, useManuscriptIntelligence } from '@/features/shared';
-import { useEditorState, useEditorActions } from '@/features/shared/context/EditorContext';
+import { useEditorState, useEditorActions } from '@/features/core/context/EditorContext';
 import { useProjectStore } from '@/features/project';
 import { RichTextEditor } from './RichTextEditor';
 import { MagicBar } from './MagicBar';

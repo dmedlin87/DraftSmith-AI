@@ -29,7 +29,7 @@ vi.mock('@/features/shared', () => ({
   })),
 }));
 
-vi.mock('@/features/shared/context/EditorContext', () => ({
+vi.mock('@/features/core/context/EditorContext', () => ({
   useEditorState: vi.fn(),
   useEditorActions: vi.fn(),
 }));
@@ -73,7 +73,7 @@ vi.mock('@/features/editor/components/CommentCard', () => ({
 
 import { useProjectStore } from '@/features/project';
 import { useEngine } from '@/features/shared';
-import { useEditorState, useEditorActions } from '@/features/shared/context/EditorContext';
+import { useEditorState, useEditorActions } from '@/features/core/context/EditorContext';
 
 const mockUseProjectStore = useProjectStore as unknown as Mock;
 const mockUseEngine = useEngine as unknown as Mock;

@@ -72,6 +72,9 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
       className="w-16 bg-[var(--nav-bg)] border-r border-[var(--border-primary)] flex flex-col items-center py-6 gap-2 shrink-0 z-40"
       style={{ pointerEvents: isZenMode ? 'none' : 'auto' }}
       aria-label="Main navigation"
+      aria-hidden={isZenMode}
+      // @ts-ignore - inert is a valid attribute but may not be in React types yet
+      inert={isZenMode ? "true" : undefined}
     >
       {/* Home/Library Button */}
       <button

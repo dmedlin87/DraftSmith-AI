@@ -149,11 +149,12 @@ const RichTextEditorComponent: React.FC<RichTextEditorProps> = ({
   return (
     <div 
       ref={editorContainerRef}
-      className={`bg-[var(--parchment-50)] min-h-[80vh] rounded-sm relative overflow-hidden transition-all duration-700 ease-out-expo animate-fade-in ${
+      className={`bg-[var(--parchment-50)] min-h-[80vh] rounded-sm relative overflow-hidden transition-all duration-700 ease-out-expo animate-fade-in focus-visible:ring-2 focus-visible:ring-[var(--interactive-accent)] focus-visible:outline-none ${
         isFocused 
           ? 'scale-[1.01] shadow-[var(--shadow-xl)] z-10' 
           : 'scale-100 shadow-[var(--shadow-lg)] z-0'
       }`}
+      tabIndex={-1}
     >
         {/* Paper Noise Texture */}
         <div 

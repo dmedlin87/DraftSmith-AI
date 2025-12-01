@@ -1,15 +1,17 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { EngineProvider, useEngine, type EngineState, type EngineActions } from '@/features/shared/context/EngineContext';
+import { EngineProvider, useEngine, type EngineState, type EngineActions } from '@/features/core/context/EngineContext';
+
 import type { Contradiction } from '@/types/schema';
 import { useQuillAIEngine } from '@/features/shared/hooks/useDraftSmithEngine';
 import { useManuscriptIndexer } from '@/features/shared/hooks/useManuscriptIndexer';
-import { useEditor } from '@/features/shared/context/EditorContext';
+import { useEditor } from '@/features/core/context/EditorContext';
+
 import { useProjectStore } from '@/features/project';
 import type { Mock } from 'vitest';
 
-vi.mock('@/features/shared/context/EditorContext', () => ({
+vi.mock('@/features/core/context/EditorContext', () => ({
   useEditor: vi.fn()
 }));
 

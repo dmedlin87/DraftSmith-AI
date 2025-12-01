@@ -1,28 +1,9 @@
 import '@testing-library/jest-dom';
+import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
-import { useProjectStore } from '@/features/project/store/useProjectStore';
-import { useLayoutStore } from '@/features/layout/store/useLayoutStore';
-import { useSettingsStore } from '@/features/settings/store/useSettingsStore';
-import { db } from '@/services/db';
+import React from 'react';
 
-type StoreApi<T> = {
-  getState: () => T;
-  setState: (partial: T | Partial<T>, replace?: boolean) => void;
-};
-
-const stores: StoreApi<any>[] = [
-  useProjectStore as unknown as StoreApi<any>,
-  useLayoutStore as unknown as StoreApi<any>,
-  useSettingsStore as unknown as StoreApi<any>,
-];
-
-const initialStates = new Map<StoreApi<any>, any>();
-
-for (const store of stores) {
-  if (!initialStates.has(store)) {
-    initialStates.set(store, store.getState());
-  }
-}
+// Stores are now globally mocked, so no need for manual state tracking
 
 // Lightweight global mock for @google/genai to avoid heavy SDK initialization in tests
 // Individual test files can override this mock with vi.mock('@google/genai', ...) as needed.
@@ -33,6 +14,11 @@ vi.mock('@google/genai', () => {
     STRING: 'STRING',
     NUMBER: 'NUMBER',
     BOOLEAN: 'BOOLEAN',
+  } as const;
+
+  const Modality = {
+    AUDIO: 'AUDIO',
+    TEXT: 'TEXT',
   } as const;
 
   class GoogleGenAI {
@@ -54,7 +40,7 @@ vi.mock('@google/genai', () => {
     };
   }
 
-  return { GoogleGenAI, Type };
+  return { GoogleGenAI, Type, Modality };
 });
 
 // Global Dexie/IndexedDB mock: replace @/services/db with an in-memory implementation
@@ -184,6 +170,113 @@ vi.mock('@/services/db', () => {
 // Mock environment variables for Gemini API
 vi.stubEnv('VITE_GEMINI_API_KEY', 'test-api-key-for-testing');
 
+// Global mock for EditorContext to prevent crashes when components are loaded without providers
+// Individual tests can override these mocks with vi.mock() as needed
+vi.mock('@/features/core/context/EditorContext', () => ({
+  EditorProvider: ({ children }: { children: React.ReactNode }) => children,
+  useEditor: vi.fn(() => ({
+    currentText: '',
+    updateText: vi.fn(),
+    setSelectionState: vi.fn(),
+    selectionRange: null,
+    selectionPos: null,
+    activeHighlight: null,
+    setEditor: vi.fn(),
+    clearSelection: vi.fn(),
+    editor: null,
+    history: [],
+    restore: vi.fn(),
+    handleNavigateToIssue: vi.fn(),
+  })),
+  useEditorState: vi.fn(() => ({
+    editor: null,
+    currentText: '',
+    history: [],
+    redoStack: [],
+    canUndo: false,
+    canRedo: false,
+    hasUnsavedChanges: false,
+    selectionRange: null,
+    selectionPos: null,
+    cursorPosition: 0,
+    activeHighlight: null,
+    branches: [],
+    activeBranchId: null,
+    isOnMain: true,
+    inlineComments: [],
+    visibleComments: [],
+    isZenMode: false,
+  })),
+  useEditorActions: vi.fn(() => ({
+    setEditor: vi.fn(),
+    updateText: vi.fn(),
+    commit: vi.fn(),
+    loadDocument: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
+    restore: vi.fn(),
+    setSelection: vi.fn(),
+    setSelectionState: vi.fn(),
+    clearSelection: vi.fn(),
+    handleNavigateToIssue: vi.fn(),
+    scrollToPosition: vi.fn(),
+    getEditorContext: vi.fn(),
+    createBranch: vi.fn(),
+    switchBranch: vi.fn(),
+    mergeBranch: vi.fn(),
+    deleteBranch: vi.fn(),
+    renameBranch: vi.fn(),
+    setInlineComments: vi.fn(),
+    dismissComment: vi.fn(),
+    clearComments: vi.fn(),
+    toggleZenMode: vi.fn(),
+  })),
+  useManuscript: vi.fn(() => ({
+    currentText: '',
+    updateText: vi.fn(),
+  })),
+  ManuscriptProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+// Global mock for useProjectStore to prevent crashes
+// Creates a mock that returns safe default values, can be overridden by individual tests
+const createDefaultProjectState = () => ({
+  projects: [],
+  currentProject: null,
+  chapters: [],
+  activeChapterId: null,
+  isLoading: false,
+  error: null,
+  init: vi.fn(),
+  loadProject: vi.fn(),
+  createProject: vi.fn().mockResolvedValue('mock-id'),
+  importProject: vi.fn().mockResolvedValue('mock-id'),
+  updateProject: vi.fn(),
+  deleteProject: vi.fn(),
+  createChapter: vi.fn().mockResolvedValue('mock-chapter-id'),
+  updateChapter: vi.fn(),
+  deleteChapter: vi.fn(),
+  selectChapter: vi.fn(),
+  setActiveChapter: vi.fn(),
+  getActiveChapter: () => undefined,
+  reorderChapters: vi.fn(),
+  updateProjectLore: vi.fn(),
+  updateChapterContent: vi.fn(),
+  updateChapterTitle: vi.fn(),
+  updateChapterAnalysis: vi.fn(),
+  updateManuscriptIndex: vi.fn(),
+});
+
+// Create a mock function that tracks calls and can be overridden
+const mockUseProjectStore = vi.fn((selector?: (state: any) => any) => {
+  const state = createDefaultProjectState();
+  return typeof selector === 'function' ? selector(state) : state;
+});
+
+vi.mock('@/features/project/store/useProjectStore', () => ({
+  useProjectStore: mockUseProjectStore,
+}));
+
 // Mock matchMedia for components that use it
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -206,18 +299,28 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
   disconnect: vi.fn(),
 }));
 
-const resetStores = () => {
-  for (const store of stores) {
-    const initial = initialStates.get(store);
-    if (initial) {
-      store.setState(initial, true);
-    }
-  }
-};
+// Mock Web Worker to avoid spawning real workers in tests
+class MockWorker {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  constructor(_url: string | URL, _options?: any) {}
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  postMessage(_message: any) {}
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  terminate() {}
+  onmessage: ((this: Worker, ev: MessageEvent) => any) | null = null;
+  onerror: ((this: Worker, ev: ErrorEvent) => any) | null = null;
+}
 
-afterEach(() => {
-  resetStores();
+// Always override to ensure consistency across environments
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).Worker = MockWorker as unknown as typeof Worker;
 
+afterEach(async () => {
+  // Clean up DOM between tests - critical for preventing test pollution
+  cleanup();
+
+  // Reset the in-memory database
+  const { db } = await import('@/services/db');
   const anyDb = db as any;
   if (anyDb && typeof anyDb.reset === 'function') {
     anyDb.reset();

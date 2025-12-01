@@ -68,7 +68,7 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('@/features/shared/context/EditorContext', () => ({
+vi.mock('@/features/core/context/EditorContext', () => ({
   useEditorState: vi.fn(),
   useEditorActions: vi.fn(),
 }));
@@ -76,7 +76,7 @@ vi.mock('@/features/shared/context/EditorContext', () => ({
 import { MainLayout } from '@/features/layout/MainLayout';
 import { useProjectStore } from '@/features/project';
 import { useEngine } from '@/features/shared';
-import { useEditorState, useEditorActions } from '@/features/shared/context/EditorContext';
+import { useEditorState, useEditorActions } from '@/features/core/context/EditorContext';
 import { useLayoutStore } from '@/features/layout/store/useLayoutStore';
 
 const mockUseProjectStore = useProjectStore as unknown as Mock;

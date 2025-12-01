@@ -111,17 +111,17 @@ describe('FileUpload', () => {
       { name: 'Draft 1.txt', content: 'Content from draft 1', timestamp: Date.now() },
     ];
     
-    render(<FileUpload onTextLoaded={mockOnTextLoaded} recentFiles={recentFiles} />);
+    const { getByText } = render(<FileUpload onTextLoaded={mockOnTextLoaded} recentFiles={recentFiles} />);
     
-    fireEvent.click(screen.getByText('Draft 1.txt'));
+    fireEvent.click(getByText('Draft 1.txt'));
     
     expect(mockOnTextLoaded).toHaveBeenCalledWith('Content from draft 1', 'Draft 1.txt');
   });
 
   it('does not render recent files section when empty', () => {
-    render(<FileUpload onTextLoaded={mockOnTextLoaded} recentFiles={[]} />);
+    const { queryByText } = render(<FileUpload onTextLoaded={mockOnTextLoaded} recentFiles={[]} />);
     
-    expect(screen.queryByText('Recent Drafts')).not.toBeInTheDocument();
+    expect(queryByText('Recent Drafts')).not.toBeInTheDocument();
   });
 
   it('handles file read error gracefully', async () => {

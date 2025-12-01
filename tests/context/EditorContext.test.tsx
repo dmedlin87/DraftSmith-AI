@@ -6,7 +6,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
-import { EditorProvider, useEditor } from '@/features/shared/context/EditorContext';
+
+// Unmock EditorContext since this test needs the real implementation
+vi.unmock('@/features/core/context/EditorContext');
+
+import { EditorProvider, useEditor } from '@/features/core/context/EditorContext';
 
 // Mock useProjectStore
 const mockGetActiveChapter = vi.fn(() => ({

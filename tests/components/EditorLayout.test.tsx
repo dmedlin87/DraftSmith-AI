@@ -42,7 +42,7 @@ vi.mock('@/features/shared', () => ({
   useEngine: vi.fn(),
 }));
 
-vi.mock('@/features/shared/context/AppBrainContext', () => ({
+vi.mock('@/features/core/context/AppBrainContext', () => ({
   useAppBrainState: vi.fn(() => ({
     intelligence: {
       full: { voice: null },

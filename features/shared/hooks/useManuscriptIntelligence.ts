@@ -27,7 +27,7 @@ import {
 const DEBOUNCE_DELAY = 150;       // ms after typing stops for debounced processing
 const BACKGROUND_DELAY = 2000;    // ms after typing stops for full processing
 const INSTANT_THROTTLE = 50;      // ms minimum between instant updates
-const USE_WEB_WORKER = true;      // Enable Web Worker for background processing
+const USE_WEB_WORKER = (import.meta as any).env?.MODE !== 'test';      // Disable Web Worker in Vitest to avoid worker-related OOM
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOOK INTERFACE

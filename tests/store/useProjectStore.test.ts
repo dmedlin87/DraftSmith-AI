@@ -1,4 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Unmock the store since this test needs the real implementation
+vi.unmock('@/features/project/store/useProjectStore');
+
 import { useProjectStore } from '@/features/project/store/useProjectStore';
 
 // Mock the database
