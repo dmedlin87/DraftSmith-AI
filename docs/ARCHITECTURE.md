@@ -92,8 +92,11 @@ The EngineContext is the **single integration point** where editor text + projec
 - Dexie database `QuillAIDB` with tables:
   - `projects`: `id, updatedAt`
   - `chapters`: `id, projectId, order, updatedAt`
+  - `memories`: agent memory notes (facts, issues, preferences) with compound index `[scope+projectId]` and multi-entry `topicTags`
+  - `goals`: agent goals per project with compound index `[projectId+status]`
+  - `watchedEntities`: entities the agent proactively monitors per project
 
-All persistence from `useProjectStore` writes through this DB layer.
+The Project Store uses `projects` and `chapters` for manuscript persistence. The agent memory system (`services/memory`) uses `memories`, `goals`, and `watchedEntities` to provide long‑lived context for the omniscient agent.
 
 ### 2.2 `scheduleChapterPersist` Debounced Writes
 
@@ -188,3 +191,34 @@ Beyond the analysis pipeline, the **Token Guard** pattern is the general safegua
 - Returns structured diagnostics (`TokenCheckResult`) that UI/engine code can surface as warnings rather than letting calls fail unexpectedly.
 
 Together, the **Viewport Collision** UX pattern and the **Token Guard** API pattern make the system resilient both in the UI (no off‑screen overlays) and in backend calls (no context overflow).
+
+---
+
+## 5. Omniscient Agent Layer (AppBrain + `useAgentOrchestrator`)
+
+Above the Engine layer, Quill AI exposes an omniscient agent that sees unified application state and can safely execute tools.
+
+- **State aggregation:** `AppBrainProvider` (`features/shared/context/AppBrainContext.tsx`) combines:
+  - Project Store (projects, chapters, lore, manuscript index)
+  - EditorContext (text, selection, branches, comments, zen mode)
+  - Analysis state (incremental analysis results and status)
+  - Deterministic intelligence (HUD, entities, timeline, style, heatmap)
+  - UI/session state (cursor, active view/panel, chat session metadata)
+- **Context building:** `services/appBrain/contextBuilder.ts` derives AI‑ready context strings (full, compressed, navigation‑focused, editing‑focused) from `AppBrainState`.
+- **Canonical agent hook:** `useAgentOrchestrator` (`features/agent/hooks/useAgentOrchestrator.ts`) is the primary entrypoint for chat/agent UIs. It:
+  - Creates Gemini chat sessions via `services/gemini/agent.ts` with `ALL_AGENT_TOOLS`.
+  - Builds prompts from AppBrain context (including compressed variants for latency‑sensitive modes).
+  - Routes tool calls through `executeAppBrainToolCall` to `AppBrainActions` (navigation, editing, analysis, UI, knowledge, generation).
+
+### 5.1 Legacy Agent Paths (Deprecated)
+
+For backward compatibility, some legacy flows still exist but should be considered deprecated:
+
+- **`useAgentService`** (`features/agent/hooks/useAgentService.ts`)
+  - Manually assembles context (fullText, lore, chapters, analysis, intelligenceHUD) and passes it into `AgentController`.
+  - New features should prefer `useAgentOrchestrator` instead of extending this path.
+- **`ChatInterface`** (`features/agent/components/ChatInterface.tsx`)
+  - Legacy chat UI that talks to `QuillAgent` through `useAgentService` and an `onAgentAction` callback.
+  - Future UIs should be built on top of `useAgentOrchestrator` + AppBrain, with tool execution flowing through the unified AppBrain actions layer.
+
+Over time, these legacy paths will be migrated or removed as all agent features converge on the AppBrain‑powered omniscient architecture.

@@ -34,12 +34,6 @@ export default defineConfig(({ mode }) => {
             lines: 80,
           },
         },
-        poolOptions: {
-          threads: {
-            maxThreads: 1,
-            minThreads: 1,
-          },
-        },
         reporters: ['default', 'json'],
         outputFile: {
           json: 'coverage/vitest-report.json',

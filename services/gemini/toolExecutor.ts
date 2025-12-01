@@ -1,9 +1,33 @@
 import { AppBrainActions } from '@/services/appBrain';
+import {
+  createMemory,
+  updateMemory,
+  deleteMemory,
+  addGoal,
+  updateGoal,
+  addWatchedEntity,
+  searchMemoriesByTags,
+  formatMemoriesForPrompt,
+} from '@/services/memory';
 
 export interface ToolResult {
   success: boolean;
   message: string;
   error?: string;
+}
+
+const MEMORY_TOOL_NAMES = new Set<string>([
+  'write_memory_note',
+  'search_memory',
+  'update_memory_note',
+  'delete_memory_note',
+  'create_goal',
+  'update_goal',
+  'watch_entity',
+]);
+
+export function isMemoryToolName(toolName: string): boolean {
+  return MEMORY_TOOL_NAMES.has(toolName);
 }
 
 export async function executeAppBrainToolCall(
@@ -127,15 +151,213 @@ export async function executeAppBrainToolCall(
   }
 }
 
+export async function executeMemoryToolCall(
+  toolName: string,
+  args: Record<string, unknown>,
+  projectId: string | null,
+): Promise<ToolResult> {
+  try {
+    let message: string;
+
+    switch (toolName) {
+      case 'write_memory_note': {
+        const scope = (args.scope as string) || 'project';
+        const text = args.text as string;
+        const type = args.type as string;
+        const tags = Array.isArray(args.tags) ? (args.tags as string[]) : [];
+        const importance =
+          typeof args.importance === 'number' ? (args.importance as number) : 0.5;
+
+        if (!text || !type || !scope) {
+          throw new Error('Missing required fields for write_memory_note');
+        }
+
+        if (scope === 'project' && !projectId) {
+          throw new Error('Cannot write project-scoped memory without an active projectId');
+        }
+
+        const note = await createMemory({
+          scope: scope as any,
+          projectId: scope === 'project' ? projectId ?? undefined : undefined,
+          text,
+          type: type as any,
+          topicTags: tags,
+          importance,
+        });
+
+        const preview = note.text.length > 120
+          ? `${note.text.slice(0, 117)}...`
+          : note.text;
+
+        message = `Saved memory note (${note.scope}/${note.type}): ${preview}`;
+        break;
+      }
+
+      case 'search_memory': {
+        const tags = Array.isArray(args.tags) ? (args.tags as string[]) : [];
+        const type = args.type as string | undefined;
+        const scopeArg = (args.scope as string | undefined) ?? 'all';
+
+        const results = await searchMemoriesByTags(tags, {
+          projectId: projectId ?? undefined,
+          limit: 50,
+        });
+
+        let filtered = results;
+        if (scopeArg === 'project') {
+          filtered = filtered.filter(n => n.scope === 'project');
+        } else if (scopeArg === 'author') {
+          filtered = filtered.filter(n => n.scope === 'author');
+        }
+        if (type) {
+          filtered = filtered.filter(n => n.type === type);
+        }
+
+        const author = filtered.filter(n => n.scope === 'author');
+        const project = filtered.filter(n => n.scope === 'project');
+        const formatted = formatMemoriesForPrompt({ author, project }, { maxLength: 2000 });
+        message = formatted || 'No matching memories found.';
+        break;
+      }
+
+      case 'update_memory_note': {
+        const id = args.id as string;
+        if (!id) {
+          throw new Error('Missing id for update_memory_note');
+        }
+
+        const updates: Record<string, unknown> = {};
+        if (typeof args.text === 'string') {
+          updates.text = args.text as string;
+        }
+        if (typeof args.importance === 'number') {
+          updates.importance = args.importance as number;
+        }
+        if (Array.isArray(args.tags)) {
+          updates.topicTags = args.tags as string[];
+        }
+
+        const updated = await updateMemory(id, updates as any);
+        const preview = updated.text.length > 120
+          ? `${updated.text.slice(0, 117)}...`
+          : updated.text;
+        message = `Updated memory note (${updated.scope}/${updated.type}): ${preview}`;
+        break;
+      }
+
+      case 'delete_memory_note': {
+        const id = args.id as string;
+        if (!id) {
+          throw new Error('Missing id for delete_memory_note');
+        }
+        await deleteMemory(id);
+        message = `Deleted memory note ${id}`;
+        break;
+      }
+
+      case 'create_goal': {
+        if (!projectId) {
+          throw new Error('Cannot create goal without an active projectId');
+        }
+        const title = args.title as string;
+        const description = args.description as string | undefined;
+        if (!title) {
+          throw new Error('Missing title for create_goal');
+        }
+
+        const goal = await addGoal({
+          projectId,
+          title,
+          description,
+          status: 'active',
+        });
+        message = `Created goal "${goal.title}" (status: ${goal.status}, progress: ${goal.progress}%)`;
+        break;
+      }
+
+      case 'update_goal': {
+        const id = args.id as string;
+        if (!id) {
+          throw new Error('Missing id for update_goal');
+        }
+
+        const updates: Record<string, unknown> = {};
+        if (typeof args.progress === 'number') {
+          updates.progress = args.progress as number;
+        }
+        if (typeof args.status === 'string') {
+          updates.status = args.status as string;
+        }
+
+        const goal = await updateGoal(id, updates as any);
+        message = `Updated goal "${goal.title}" (status: ${goal.status}, progress: ${goal.progress}%)`;
+        break;
+      }
+
+      case 'watch_entity': {
+        if (!projectId) {
+          throw new Error('Cannot watch entity without an active projectId');
+        }
+        const name = args.name as string;
+        const reason = args.reason as string | undefined;
+        const priority = (args.priority as string | undefined) ?? 'medium';
+        if (!name) {
+          throw new Error('Missing name for watch_entity');
+        }
+
+        const entity = await addWatchedEntity({
+          name,
+          projectId,
+          priority: priority as any,
+          reason,
+        });
+        message = `Added watched entity "${entity.name}" (priority: ${entity.priority})`;
+        break;
+      }
+
+      default:
+        return {
+          success: false,
+          message: `Unknown memory tool: ${toolName}`,
+          error: 'UnknownMemoryTool',
+        };
+    }
+
+    return {
+      success: true,
+      message,
+    };
+  } catch (e) {
+    const error = e instanceof Error ? e.message : 'Unknown error';
+    return {
+      success: false,
+      message: `Error executing memory tool ${toolName}: ${error}`,
+      error,
+    };
+  }
+}
+
+export async function executeAgentToolCall(
+  toolName: string,
+  args: Record<string, unknown>,
+  actions: AppBrainActions,
+  projectId: string | null,
+): Promise<ToolResult> {
+  if (isMemoryToolName(toolName)) {
+    return executeMemoryToolCall(toolName, args, projectId);
+  }
+  return executeAppBrainToolCall(toolName, args, actions);
+}
+
 /**
  * Optional OO-style executor wrapper around AppBrainActions.
  * Pure logic: no React or event/system dependencies.
  */
 export class ToolExecutor {
-  constructor(private readonly actions: AppBrainActions) {}
+  constructor(private readonly actions: AppBrainActions, private readonly projectId: string | null = null) {}
 
   execute(toolName: string, args: Record<string, unknown>): Promise<ToolResult> {
-    return executeAppBrainToolCall(toolName, args, this.actions);
+    return executeAgentToolCall(toolName, args, this.actions, this.projectId);
   }
 }
 

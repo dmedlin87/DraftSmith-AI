@@ -75,9 +75,9 @@ A **unified agent layer** that has complete awareness of the application state�
 │  │                    IndexedDB (Dexie)                             ││
 │  │  • projects: Project metadata, settings                         ││
 │  │  • chapters: Content, branches, analysis cache                   ││
-│  │  • knowledge: NEW - Unified knowledge graph                      ││
-│  │  • sessions: NEW - Agent conversation history                    ││
-│  │  • events: NEW - Audit log for all changes                       ││
+│  │  • memories: Agent memory notes (facts, issues, preferences)     ││
+│  │  • goals: Agent goals and progress per project                   ││
+│  │  • watchedEntities: Characters/elements to proactively monitor   ││
 │  └─────────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -623,39 +623,42 @@ Agent Proactive Alert: "⚠️ Hold on—in Chapter 1, Sarah has green eyes. Wou
 
 ---
 
-## Voice Mode Considerations
+## Voice Mode Considerations (Experimental)
 
-For voice mode, we use the same unified architecture but with latency optimizations:
+Voice mode uses the same unified architecture but is currently experimental/partial. It reuses AppBrain context but optimizes for latency and a safety-limited tool set:
 
 ```typescript
 // Voice uses compressed context to reduce token overhead
 const voiceSystemPrompt = `
 ${VOICE_BASE_INSTRUCTION}
-${brain.getCompressedContext()}  // Compact version
+${brain.getCompressedContext()}  // Compact AppBrain-powered context
 `;
 
-// Voice model selection (faster, smaller)
-const VOICE_MODEL = 'gemini-2.0-flash-exp'; // Optimized for real-time
+// Voice model selection (configured in config/models.ts)
+const VOICE_MODEL = ModelConfig.liveAudio; // Optimized for real-time audio
 
 // Tools available in voice mode (subset for safety)
-const VOICE_TOOLS = [
-  'navigate_to_text',
-  'jump_to_chapter', 
-  'get_character_info',
-  'toggle_zen_mode',
-  // Editing tools require confirmation in voice mode
-];
+// VOICE_SAFE_TOOLS is defined in services/gemini/agentTools.ts
+const VOICE_TOOLS = VOICE_SAFE_TOOLS; // e.g. navigation, safe analysis, basic UI
 ```
 
 ---
 
 ## Migration Path
 
-1. **Phase 1** (Week 1): Create `AppBrainProvider`, migrate existing contexts to feed into it
-2. **Phase 2** (Week 2): Implement new agent tools, update `useAgentService` to use AppBrain
-3. **Phase 3** (Week 3): Add event bus, implement proactive agent features
-4. **Phase 4** (Week 4): Extend database, add knowledge persistence
-5. **Phase 5** (Week 5): Voice mode integration with unified architecture
+Status (current):
+
+- Phases 1–3 are implemented (AppBrain, unified tools, event bus).
+- Phase 4 is realized via the agent memory tables (`memories`, `goals`, `watchedEntities`).
+- Phase 5 (voice integration on top of compressed context + VOICE_SAFE_TOOLS) is in progress/experimental.
+
+Planned rollout (original roadmap):
+
+1. **Phase 1**: Create `AppBrainProvider`, migrate existing contexts to feed into it
+2. **Phase 2**: Implement new agent tools, update `useAgentService` to use AppBrain
+3. **Phase 3**: Add event bus, implement proactive agent features
+4. **Phase 4**: Extend database with persistent knowledge/memory
+5. **Phase 5**: Voice mode integration with unified architecture
 
 ---
 
@@ -664,26 +667,28 @@ const VOICE_TOOLS = [
 ```text
 services/
 ├── appBrain/
-│   ├── index.ts              # Main AppBrain provider
+│   ├── index.ts              # AppBrain exports (state, events, builders)
 │   ├── eventBus.ts           # Event pub/sub system
 │   ├── contextBuilder.ts     # AI context string generation
-│   └── actions.ts            # Tool execution handlers
+│   └── types.ts              # Unified AppBrain types (state, actions, events)
 ├── gemini/
 │   ├── agent.ts              # Agent session creation
 │   ├── agentTools.ts         # NEW: Full tool definitions
 │   └── ...
-└── db.ts                     # Extended with knowledge tables
+└── db.ts                     # Dexie DB with projects, chapters, and agent memory tables
 
 features/
 ├── agent/
 │   ├── hooks/
-│   │   ├── useAgentOrchestrator.ts  # NEW: Unified agent hook
-│   │   ├── useAgentService.ts       # Legacy, wraps orchestrator
-│   │   └── useAgenticEditor.ts      # Legacy, wraps orchestrator
+│   │   ├── useAgentOrchestrator.ts  # Canonical omniscient agent hook (AppBrain-powered)
+│   │   ├── useAgentService.ts       # Legacy manual-context hook (deprecated)
+│   │   └── useAgenticEditor.ts      # Legacy agentic editor wrapper (deprecated)
+│   ├── components/
+│   │   └── ChatInterface.tsx        # Legacy chat UI using useAgentService (deprecated)
 │   └── ...
 └── shared/
     └── context/
-        └── AppBrainContext.tsx       # NEW: Wraps AppBrain for React
+        └── AppBrainContext.tsx       # React wrapper over AppBrain (canonical source for agent state)
 ```
 
 ---

@@ -11,7 +11,7 @@ import { useState, useRef, useCallback, useEffect, useReducer } from 'react';
 import { Chat } from '@google/genai';
 import { createAgentSession } from '@/services/gemini/agent';
 import { ALL_AGENT_TOOLS, VOICE_SAFE_TOOLS } from '@/services/gemini/agentTools';
-import { executeAppBrainToolCall } from '@/services/gemini/toolExecutor';
+import { executeAgentToolCall } from '@/services/gemini/toolExecutor';
 import { useAppBrain } from '@/features/shared';
 import { ChatMessage } from '@/types';
 import { Persona, DEFAULT_PERSONAS } from '@/types/personas';
@@ -239,7 +239,8 @@ export function useAgentOrchestrator(
   ): Promise<string> => {
     dispatch({ type: 'START_EXECUTION', tool: toolName });
 
-    const result = await executeAppBrainToolCall(toolName, args, brain.actions);
+    const projectId = brain.state.manuscript.projectId;
+    const result = await executeAgentToolCall(toolName, args, brain.actions, projectId);
 
     if (result.success) {
       emitToolExecuted(toolName, true);
@@ -253,9 +254,8 @@ export function useAgentOrchestrator(
         error: result.error ?? 'Unknown error',
       });
     }
-
     return result.message;
-  }, [brain.actions]);
+  }, [brain.actions, brain.state.manuscript.projectId]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // MESSAGE HANDLING
