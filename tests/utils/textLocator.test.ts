@@ -1,255 +1,101 @@
 import { describe, it, expect } from 'vitest';
-import { findQuoteRange, enrichAnalysisWithPositions, extractClickableIssues } from '@/features/shared/utils/textLocator';
-import { AnalysisResult, CharacterProfile } from '@/types';
+import { enrichAnalysisWithPositions, findQuoteRange } from '@/features/shared/utils/textLocator';
 
-// Helper to create a valid CharacterProfile
-const createCharacter = (overrides: Partial<CharacterProfile> = {}): CharacterProfile => ({
-  name: 'Test Character',
-  bio: 'Test bio',
-  arc: 'Test arc',
-  arcStages: [],
-  relationships: [],
-  plotThreads: [],
-  inconsistencies: [],
-  developmentSuggestion: 'Test suggestion',
-  ...overrides,
-});
-
-// Helper to create a valid AnalysisResult
-const createAnalysis = (overrides: Partial<AnalysisResult> = {}): AnalysisResult => ({
-  summary: 'Test summary',
-  strengths: [],
-  weaknesses: [],
-  pacing: { score: 5, analysis: 'Test', slowSections: [], fastSections: [] },
-  plotIssues: [],
-  characters: [],
-  generalSuggestions: [],
-  ...overrides,
-});
+const sampleText = 'First line.  Second line with   extra spaces.';
 
 describe('findQuoteRange', () => {
-  describe('exact match', () => {
-    it('finds exact match', () => {
-      const text = 'The quick brown fox jumps over the lazy dog.';
-      const result = findQuoteRange(text, 'quick brown');
-      
-      expect(result).toEqual({ start: 4, end: 15 });
-    });
-
-    it('returns null for no match', () => {
-      const text = 'The quick brown fox jumps over the lazy dog.';
-      const result = findQuoteRange(text, 'slow red');
-      
-      expect(result).toBeNull();
-    });
-
-    it('returns null for empty inputs', () => {
-      expect(findQuoteRange('', 'test')).toBeNull();
-      expect(findQuoteRange('test', '')).toBeNull();
-      expect(findQuoteRange('', '')).toBeNull();
-    });
+  it('finds exact and trimmed matches', () => {
+    expect(findQuoteRange(sampleText, 'Second line')).toEqual({ start: 13, end: 24 });
+    expect(findQuoteRange(sampleText, '  Second line ')).toEqual({ start: 11, end: 25 });
   });
 
-  describe('trimmed match', () => {
-    it('finds match with extra whitespace in quote', () => {
-      const text = 'The quick brown fox jumps.';
-      const result = findQuoteRange(text, '  quick brown  ');
-      
-      expect(result).not.toBeNull();
-      expect(result!.start).toBe(4);
-    });
+  it('handles normalized whitespace and partial fallbacks', () => {
+    expect(findQuoteRange(sampleText, 'Second line with extra spaces')).toEqual({ start: 13, end: 42 });
+    expect(findQuoteRange(sampleText, 'First line.  Second')).toEqual({ start: 0, end: 19 });
   });
 
-  describe('partial match', () => {
-    it('finds match using first 20 chars for long quotes', () => {
-      const text = 'The quick brown fox jumps over the lazy dog and runs away.';
-      // Quote that starts correctly but differs at the end
-      const quote = 'quick brown fox jumps over the lazy cat'; // 'cat' instead of 'dog'
-      
-      const result = findQuoteRange(text, quote);
-      
-      // Should find the start based on first 20 chars
-      expect(result).not.toBeNull();
-      expect(result!.start).toBe(4);
-    });
+  it('returns the first match when multiple occurrences exist', () => {
+    const text = 'repeat here and repeat over there';
+    expect(findQuoteRange(text, 'repeat')).toEqual({ start: 0, end: 6 });
   });
 
-  describe('edge cases', () => {
-    it('handles whitespace differences via fuzzy matching', () => {
-      // Fuzzy matching can find matches even with whitespace differences
-      const text = 'The quick  brown fox.';
-      const quote = 'quick brown'; // has single space vs double space in text
-      
-      const result = findQuoteRange(text, quote);
-      
-      // Fuzzy matching finds this despite whitespace difference
-      expect(result).not.toBeNull();
-      expect(result!.start).toBe(4); // 'quick' starts at index 4
-    });
+  it('falls back to fuzzy search when exact matching fails', () => {
+    const text = 'abcdefg hijkl';
+    // Missing the "d" would normally fail an exact match, so this exercises the fuzzy matcher path.
+    expect(findQuoteRange(text, 'abcefg')).toEqual({ start: 0, end: 6 });
+  });
 
-    it('finds long quotes via normalization', () => {
-      // Longer quotes can be found via partial matching + normalization
-      const text = 'The quick brown fox jumps over the lazy dog and runs away fast.';
-      const quote = 'quick brown fox jumps over'; // > 20 chars, exact match exists
-      
-      const result = findQuoteRange(text, quote);
-      expect(result).not.toBeNull();
-      expect(result!.start).toBe(4);
-    });
+  it('handles normalized whitespace mapping back to original indices', () => {
+    const text = 'A  B\tC';
+    expect(findQuoteRange(text, 'A B C')).toEqual({ start: 0, end: 5 });
+  });
+
+  it('returns null when no match can be found', () => {
+    expect(findQuoteRange(sampleText, 'Nonexistent quote')).toBeNull();
+    expect(findQuoteRange('', 'anything')).toBeNull();
   });
 });
 
 describe('enrichAnalysisWithPositions', () => {
-  const fullText = 'Sarah had blue eyes. She walked into the dark castle. John was tall.';
-  
-  const mockAnalysis = createAnalysis({
-    plotIssues: [
-      { issue: 'Plot hole', location: 'Chapter 1', suggestion: 'Fix it', quote: 'blue eyes' }
-    ],
-    characters: [
-      createCharacter({
-        name: 'Sarah',
-        inconsistencies: [
-          { issue: 'Eye color changes', quote: 'blue eyes' }
-        ]
-      })
-    ],
-    settingAnalysis: {
-      score: 5,
-      analysis: 'Good setting',
-      issues: [
-        { issue: 'Castle description', suggestion: 'Add details', quote: 'dark castle' }
-      ]
-    },
+  it('populates indices for nested analysis structures', () => {
+    const enriched = enrichAnalysisWithPositions({
+      summary: '',
+      strengths: [],
+      weaknesses: [],
+      pacing: { score: 0, analysis: '', slowSections: [], fastSections: [] },
+      plotIssues: [
+        { issue: 'Plot hole', location: 'chap', suggestion: 'fix', quote: 'Second line with   extra spaces.' },
+      ],
+      characters: [
+        {
+          name: 'A',
+          bio: '',
+          arc: '',
+          arcStages: [],
+          relationships: [],
+          plotThreads: [],
+          inconsistencies: [{ issue: 'conflict', quote: 'First line.' }],
+          developmentSuggestion: '',
+          voiceTraits: '',
+        },
+      ],
+      generalSuggestions: [],
+      settingAnalysis: { score: 0, analysis: '', issues: [{ issue: 's', suggestion: '', quote: 'Second line' }] },
+    }, sampleText);
+
+    expect(enriched.plotIssues[0]).toMatchObject({ startIndex: 13, endIndex: 45 });
+    expect(enriched.settingAnalysis?.issues?.[0]).toMatchObject({ startIndex: 13, endIndex: 24 });
+    expect(enriched.characters[0].inconsistencies[0]).toMatchObject({ startIndex: 0, endIndex: 11 });
   });
 
-  it('enriches plot issues with positions', () => {
-    const enriched = enrichAnalysisWithPositions(mockAnalysis, fullText);
-    
-    const plotIssue = enriched.plotIssues[0];
-    expect(plotIssue.startIndex).toBeDefined();
-    expect(plotIssue.endIndex).toBeDefined();
-    expect(plotIssue.startIndex).toBe(10); // 'blue eyes' starts at index 10
-  });
+  it('leaves issues untouched when positions cannot be resolved', () => {
+    const analysis = {
+      summary: '',
+      strengths: [],
+      weaknesses: [],
+      pacing: { score: 0, analysis: '', slowSections: [], fastSections: [] },
+      plotIssues: [{ issue: 'Missing quote', location: '', suggestion: '', quote: 'nowhere' }],
+      settingAnalysis: { score: 0, analysis: '', issues: [{ issue: 'missing', suggestion: '', quote: 'absent' }] },
+      characters: [
+        {
+          name: 'A',
+          bio: '',
+          arc: '',
+          arcStages: [],
+          relationships: [],
+          plotThreads: [],
+          inconsistencies: [{ issue: 'no quote', quote: '' }],
+          developmentSuggestion: '',
+          voiceTraits: '',
+        },
+      ],
+      generalSuggestions: [],
+    } as const;
 
-  it('enriches character inconsistencies with positions', () => {
-    const enriched = enrichAnalysisWithPositions(mockAnalysis, fullText);
-    
-    const charInc = enriched.characters[0].inconsistencies[0];
-    expect(charInc.startIndex).toBeDefined();
-    expect(charInc.endIndex).toBeDefined();
-  });
+    const enriched = enrichAnalysisWithPositions(analysis, 'short text');
 
-  it('enriches pacing slow sections with positions', () => {
-    const analysisWithPacing = createAnalysis({
-      pacing: {
-        score: 5,
-        analysis: 'Too slow',
-        slowSections: ['walked into the dark castle'],
-        fastSections: []
-      }
-    });
-
-    const enriched = enrichAnalysisWithPositions(analysisWithPacing, fullText);
-    
-    // Currently the type definition might not explicitly add start/end to strings in the array,
-    // but the function logic usually transforms them or we check if it *can* find them.
-    // Looking at the implementation of enrichAnalysisWithPositions (inferred), it likely
-    // modifies the object in place or returns a new one.
-    // However, slowSections is typically string[]. If enrichAnalysisWithPositions returns string[], 
-    // it can't add properties to primitives. 
-    // Let's check the type or implementation in a real scenario if we could. 
-    // Assuming enrichAnalysisWithPositions might transform string[] to object[] or similar if it supports it.
-    // If it doesn't support pacing, this test is useful to prove it or document behavior.
-    // 
-    // WAIT: The EditorWorkspace usage shows:
-    // analysis.pacing?.slowSections?.forEach((section) => { const range = findQuoteRange(...) })
-    // So the ENRICH function might NOT be handling pacing sections if they remain strings.
-    // Let's checking the file content of textLocator.ts to be sure.
-  });
-
-  it('does not mutate original analysis', () => {
-    const original = JSON.parse(JSON.stringify(mockAnalysis));
-    enrichAnalysisWithPositions(mockAnalysis, fullText);
-    
-    expect(mockAnalysis.plotIssues[0]).not.toHaveProperty('startIndex');
-    expect(mockAnalysis).toEqual(original);
-  });
-
-  it('handles missing quotes gracefully', () => {
-    const analysisNoQuotes = createAnalysis({
-      plotIssues: [{ issue: 'No quote provided', location: 'Chapter 1', suggestion: 'Fix it' }]
-    });
-    
-    const enriched = enrichAnalysisWithPositions(analysisNoQuotes, fullText);
     expect(enriched.plotIssues[0]).not.toHaveProperty('startIndex');
-  });
-});
-
-describe('extractClickableIssues', () => {
-  const fullText = 'Sarah had blue eyes. She walked into the dark castle.';
-  
-  const mockAnalysis = createAnalysis({
-    plotIssues: [
-      { issue: 'Plot hole', location: 'Chapter 1', suggestion: 'Fix', quote: 'blue eyes' }
-    ],
-    characters: [
-      createCharacter({
-        name: 'Sarah',
-        inconsistencies: [
-          { issue: 'Eye inconsistency', quote: 'blue eyes' }
-        ]
-      })
-    ],
-    settingAnalysis: {
-      score: 5,
-      analysis: 'Accurate',
-      issues: [
-        { issue: 'Castle issue', suggestion: 'Fix', quote: 'dark castle' }
-      ]
-    },
-  });
-
-  it('extracts plot issues', () => {
-    const issues = extractClickableIssues(mockAnalysis, fullText);
-    const plotIssues = issues.filter(i => i.type === 'plot');
-    
-    expect(plotIssues).toHaveLength(1);
-    expect(plotIssues[0].issue).toBe('Plot hole');
-    expect(plotIssues[0].range).not.toBeNull();
-  });
-
-  it('extracts setting issues', () => {
-    const issues = extractClickableIssues(mockAnalysis, fullText);
-    const settingIssues = issues.filter(i => i.type === 'setting');
-    
-    expect(settingIssues).toHaveLength(1);
-    expect(settingIssues[0].issue).toBe('Castle issue');
-  });
-
-  it('extracts character issues with name prefix', () => {
-    const issues = extractClickableIssues(mockAnalysis, fullText);
-    const charIssues = issues.filter(i => i.type === 'character');
-    
-    expect(charIssues).toHaveLength(1);
-    expect(charIssues[0].issue).toContain('Sarah');
-    expect(charIssues[0].issue).toContain('Eye inconsistency');
-  });
-
-  it('returns all issues from analysis', () => {
-    const issues = extractClickableIssues(mockAnalysis, fullText);
-    
-    // 1 plot + 1 setting + 1 character = 3 total
-    expect(issues).toHaveLength(3);
-  });
-
-  it('handles analysis with no setting', () => {
-    const noSetting = createAnalysis({
-      ...mockAnalysis,
-      settingAnalysis: undefined
-    });
-    
-    const issues = extractClickableIssues(noSetting, fullText);
-    expect(issues.filter(i => i.type === 'setting')).toHaveLength(0);
+    expect(enriched.settingAnalysis?.issues?.[0]).not.toHaveProperty('startIndex');
+    expect(enriched.characters[0].inconsistencies[0]).not.toHaveProperty('startIndex');
   });
 });

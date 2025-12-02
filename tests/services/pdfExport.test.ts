@@ -43,6 +43,16 @@ const exportData: ExportData = {
 describe('PDFExportService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (globalThis as any).HTMLCanvasElement = class {
+      toDataURL() {
+        return 'data:image/png;base64,fake';
+      }
+    };
+    (globalThis as any).document = {
+      createElement: vi.fn((tag: string) =>
+        tag === 'canvas' ? new (globalThis as any).HTMLCanvasElement() : ({})
+      ),
+    } as any;
   });
 
   const currentInstance = () => {
@@ -319,5 +329,39 @@ describe('PDFExportService', () => {
 
     const instance = currentInstance();
     expect(instance.text).toHaveBeenCalledWith('No biography.', 20, expect.any(Number));
+  });
+
+  it('forces a page break when rendering near the bottom margin', () => {
+    const service = new PDFExportService();
+    const internal = service as any;
+    const instance = currentInstance();
+
+    internal.cursorY = internal.pageHeight - 5;
+    internal.checkPageBreak(10);
+
+    expect(instance.addPage).toHaveBeenCalledTimes(1);
+    expect(internal.cursorY).toBe(20);
+  });
+
+  it('applies heading and body fonts when rendering section titles', () => {
+    const service = new PDFExportService();
+    const instance = currentInstance();
+
+    (service as any).ensureSectionTitle('Font Embedding');
+
+    expect(instance.setFont).toHaveBeenCalledWith('helvetica', 'bold');
+    expect(instance.setFontSize).toHaveBeenCalledWith(13);
+    expect(instance.text).toHaveBeenCalledWith('Font Embedding', 20, expect.any(Number));
+    expect(instance.setFont).toHaveBeenCalledWith('helvetica', 'normal');
+  });
+
+  it('falls back to placeholder content when section text is missing', () => {
+    const service = new PDFExportService();
+    const instance = currentInstance();
+
+    (service as any).ensureSectionWithText('Missing Section');
+
+    expect(instance.text).toHaveBeenCalledWith('Missing Section', 20, expect.any(Number));
+    expect(instance.text).toHaveBeenCalledWith('None provided.', 20, expect.any(Number));
   });
 });
