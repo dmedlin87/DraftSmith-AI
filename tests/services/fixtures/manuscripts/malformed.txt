@@ -1,0 +1,5 @@
+Page 1
+Chapter-like text without header markers
+---
+Random content with control characters
+Page 2 of 10

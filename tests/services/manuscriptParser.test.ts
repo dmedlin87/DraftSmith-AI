@@ -1,5 +1,14 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { describe, it, expect } from 'vitest';
 import { parseManuscript, ParsedChapter } from '@/services/manuscriptParser';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const loadFixture = (name: string) =>
+  fs.readFileSync(path.resolve(__dirname, 'fixtures', 'manuscripts', name), 'utf8');
 
 describe('parseManuscript', () => {
   describe('basic parsing', () => {
@@ -271,6 +280,41 @@ The story continues with many paragraphs...`;
       expect(result[1].content).toContain('Content of the first chapter.');
       expect(result[2].title).toBe('SECOND CHAPTER');
       expect(result[2].content).toContain('Content of the second chapter.');
+    });
+  });
+
+  describe('edge cases and fixtures', () => {
+    it('handles malformed manuscript dumps without crashing', () => {
+      const text = loadFixture('malformed.txt');
+
+      const result = parseManuscript(text);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].title.toLowerCase()).toContain('chapter');
+      expect(result[0].content).not.toMatch(/Page\s+2\s+of\s+10/);
+      expect(result[0].content).not.toContain('Page 1');
+    });
+
+    it('splits complex formatting that uses whitespace-delimited headings', () => {
+      const text = loadFixture('complex-formatting.txt');
+
+      const result = parseManuscript(text);
+
+      expect(result.length).toBeGreaterThanOrEqual(4);
+      expect(result[0].title).toMatch(/prologue/i);
+      expect(result[1].title).toBe('THE AWAKENING');
+      expect(result[2].title).toBe('THE DUSK MARKET');
+      expect(result[3].title).toBe('APPENDIX');
+    });
+
+    it('does not promote sentences to titles when the next line is not a heading', () => {
+      const text = loadFixture('ambiguous-heading.txt');
+
+      const result = parseManuscript(text);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Chapter 3');
+      expect(result[0].content.startsWith('This looks like a complete sentence.')).toBe(true);
     });
   });
 });
