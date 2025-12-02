@@ -137,6 +137,7 @@ Below: short notes + **reusable prompts**. When you’re ready to implement, cop
 **Key files:** `services/db.ts`, `services/intelligence/*` (cache, chunkIndex, chunkManager, contradictionDetector, deltaTracker, incrementalProcessor, narrativeArc, sceneEmbedder, timelineTracker, workerPool, index).
 
 **Test themes:**
+
 - Deterministic parsing and analysis for small synthetic manuscripts.
 - Cache semantics (hits/misses, TTL, LRU eviction).
 - Incremental and delta-based processing.
@@ -173,6 +174,7 @@ Return only the Vitest tests.
 **Key files:** `services/memory/autoObserver.ts`, `cache.ts`, `chains.ts`, `factExtractor.ts`, `goalGraph.ts`, `index.ts`, `realtimeTriggers.ts`, `semanticDedup.ts`, `sessionTracker.ts`.
 
 **Test themes:**
+
 - Translating analysis/intelligence results into MemoryNotes and AgentGoals.
 - Deduplication of near-duplicate notes; importance scoring and tags.
 - Goal relationships and session tracking (active/stalled goals).
@@ -202,12 +204,14 @@ Use simple in-memory fixtures; avoid real IndexedDB, and mock `services/db.ts` i
 ### 3.3 AppBrain, Commands, Agent Orchestration (P0/P1)
 
 **Key files:**
+
 - AppBrain/context: `features/core/context/AppBrainContext.tsx`, `services/appBrain/*.ts`.
 - Commands: `services/commands/*.ts` (analysis, editing, generation, knowledge, navigation, ui, registry).
 - Agent orchestration: `services/core/AgentController.ts`, `services/gemini/agent.ts`, `services/gemini/toolExecutor.ts`, `services/gemini/memoryToolHandlers.ts`, `services/gemini/errors.ts`.
 - Hooks: `features/agent/hooks/useAgentService.ts`, `useAgentOrchestrator.ts`, `useMemoryIntelligence.ts`, `useProactiveSuggestions.ts`.
 
 **Test themes:**
+
 - AppBrain context building (full vs compressed context, cross-chapter, adaptive behavior).
 - Commands correctly delegating to services and honoring undo/reversible semantics.
 - Agent flows: user request → LLM prompt → tool execution → final response.
@@ -236,11 +240,13 @@ Use existing tests in `tests/services/core` and `tests/services/gemini` as style
 ### 3.4 Editor/Layout/Settings Hooks & UI (P1)
 
 **Key files:**
+
 - Hooks: `features/editor/hooks/useChunkIndex.ts`, `useTiptapSync.ts`, `useEditorBranching.ts`.
 - Layout: `features/layout/EditorHeader.tsx`, `EditorLayout.tsx`, `MainLayout.tsx`, `store/useLayoutStore.ts`.
 - Settings: `features/settings/components/BudgetSelector.tsx`, `CritiqueIntensitySelector.tsx`, `ExperienceSelector.tsx`.
 
 **Test themes:**
+
 - For hooks, small harness components + React Testing Library.
 - For layout, different UI states (zen mode, panels open/closed, responsive behavior).
 - For settings, controlled components and callbacks (value changes, keyboard interactions).
@@ -268,12 +274,14 @@ Match the style of existing tests under `tests/components` and `tests/features`.
 ### 3.5 Feature UI & Voice Hooks (P1/P2)
 
 **Key files:**
+
 - Lore: `KnowledgeGraph.tsx`, `LoreManager.tsx`.
 - Project: `ImportWizard.tsx`, `ProjectDashboard.tsx`, `StoryBoard.tsx`.
 - Agent UI: `ChatInterface.tsx`, `ActivityFeed.tsx`.
 - Voice hooks: `useAudioController.ts`, `useTextToSpeech.ts`, `useVoiceSession.ts`.
 
 **Test themes:**
+
 - Multi-step flows (ImportWizard, StoryBoard interactions, Chat/Activity feed updates).
 - Graph interactions (node clicks, hover states, navigation hooks for KnowledgeGraph).
 - Voice: lifecycle of a voice session, error states, TTS start/stop, audio controller state changes.
@@ -299,12 +307,14 @@ Instructions:
 ### 3.6 Shared Utils & Test Infra (P2)
 
 **Key files:**
+
 - `features/shared/utils/textLocator.ts`
 - `features/shared/context/UsageContext.tsx`
 - `features/shared/components/AccessibleTooltip.tsx`, `Icons.tsx`
 - `tests/mocks/geminiClient.ts`, `tests/factories/analysisResultFactory.ts`
 
 **Test themes:**
+
 - Exhaustive but small input sets for textLocator (exact vs fuzzy matches, multiple hits, no hits).
 - UsageContext state updates and edge cases.
 - Tooltip timing/keyboard behavior and icon rendering fallbacks.
