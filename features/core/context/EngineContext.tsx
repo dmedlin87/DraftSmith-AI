@@ -3,6 +3,7 @@ import { useEditor } from './EditorContext';
 
 import { useProjectStore } from '@/features/project';
 import { useQuillAIEngine, type PendingDiff } from '@/features/shared/hooks/useDraftSmithEngine';
+import { AnalysisWarning } from '@/types';
 import { useManuscriptIndexer } from '@/features/shared/hooks/useManuscriptIndexer';
 import { Contradiction } from '@/types/schema';
 
@@ -18,7 +19,7 @@ import { Contradiction } from '@/types/schema';
 export interface EngineState {
   isAnalyzing: boolean;
   analysisError?: string | null;
-  analysisWarning?: string | null;
+  analysisWarning?: AnalysisWarning | null;
   magicVariations: string[];
   activeMagicMode?: string | null;
   magicHelpResult?: string;
@@ -30,6 +31,7 @@ export interface EngineState {
 
 export interface EngineActions {
   runAnalysis: () => void;
+  runSelectionAnalysis: () => void;
   cancelAnalysis: () => void;
   handleRewrite: (mode: string, tone?: string) => void;
   handleHelp: (type: 'Explain' | 'Thesaurus') => void;

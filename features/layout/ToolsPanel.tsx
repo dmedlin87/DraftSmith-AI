@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SidebarTab } from '@/types';
+import { SidebarTab, AnalysisWarning } from '@/types';
 import { ChatInterface, ActivityFeed } from '@/features/agent';
 import { Dashboard } from '@/features/analysis';
 import { VoiceMode } from '@/features/voice';
@@ -28,7 +28,11 @@ interface ToolsPanelProps {
   history: any[];
   // Engine state
   isAnalyzing: boolean;
-  analysisWarning?: string;
+  analysisWarning?: AnalysisWarning | null;
+  onAnalyzeSelection?: () => void;
+  hasSelection?: boolean;
+  onAnalyzeSelection?: () => void;
+  hasSelection?: boolean;
   // Callbacks
   onAgentAction: (action: string, params: any) => Promise<string>;
   onNavigateToText?: (start: number, end: number) => void;
@@ -52,6 +56,8 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
   history,
   isAnalyzing,
   analysisWarning,
+  onAnalyzeSelection,
+  hasSelection,
   onAgentAction,
   onNavigateToText,
   onRestore,
@@ -108,6 +114,8 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
                 currentText={currentText}
                 onFixRequest={handleFixRequest}
                 warning={analysisWarning}
+                onAnalyzeSelection={onAnalyzeSelection}
+                hasSelection={hasSelection}
                 contradictions={contradictions}
                 derivedLore={derivedLore}
                 onNavigateToText={onNavigateToText}

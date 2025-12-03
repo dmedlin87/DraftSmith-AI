@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Token limits and analysis truncation</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; margin: 2rem; color: #1f2937; }
+    h1 { color: #111827; }
+    ul { margin-left: 1.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Token limits and analysis truncation</h1>
+  <p>Quill AI automatically trims analysis requests that exceed the configured maximum context length. When this happens, you will see a warning banner in the Analysis panel with details about how much text was removed.</p>
+  <p>To avoid truncation:</p>
+  <ul>
+    <li>Analyze a smaller selection of the manuscript.</li>
+    <li>Break long chapters into sections and run analysis on each section separately.</li>
+    <li>Keep supplemental context (like lore or notes) concise.</li>
+  </ul>
+  <p>If you continue to hit limits, consider refactoring the scene or running multiple focused analyses instead of one long request.</p>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { analyzeDraft } from '@/services/gemini/analysis';
-import { AnalysisResult } from '@/types';
+import { AnalysisResult, AnalysisWarning } from '@/types';
 import { Lore, ManuscriptIndex } from '@/types/schema';
 import { useUsage } from '../context/UsageContext';
 import { ModelConfig } from '@/config/models';
@@ -84,7 +84,7 @@ export function useQuillAIEngine({
   // Analysis State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [analysisWarning, setAnalysisWarning] = useState<string | null>(null);
+  const [analysisWarning, setAnalysisWarning] = useState<AnalysisWarning | null>(null);
   const analysisAbortRef = useRef<AbortController | null>(null);
 
   // Magic Editor (delegated to useMagicEditor hook)
@@ -100,46 +100,57 @@ export function useQuillAIEngine({
   const [pendingDiff, setPendingDiff] = useState<PendingDiff | null>(null);
 
   // --- 1. Analysis Logic ---
-  const runAnalysis = useCallback(async () => {
-    const text = getCurrentText();
+  const performAnalysis = useCallback(async (
+    text: string,
+    scope: 'full' | 'selection' = 'full'
+  ) => {
     const chapterId = activeChapterId;
-    
+
     if (!text.trim() || !chapterId) return;
-    
-    // Cancel any in-flight analysis
+
     analysisAbortRef.current?.abort();
     analysisAbortRef.current = new AbortController();
     const signal = analysisAbortRef.current.signal;
-    
+
     setIsAnalyzing(true);
     setAnalysisError(null);
     setAnalysisWarning(null);
-    
+
     try {
       const { result, usage, warning } = await analyzeDraft(text, projectSetting, manuscriptIndex, signal);
       trackUsage(usage, ModelConfig.analysis);
-      
+
       if (signal.aborted) return;
-      setAnalysisWarning(warning || null);
-      
-      // Verify chapter hasn't changed during async operation
+
+      const combinedWarning: AnalysisWarning | null = (() => {
+        if (scope === 'selection') {
+          if (warning) {
+            return { ...warning, message: `Selection-only analysis: ${warning.message}` };
+          }
+          return { message: 'Analysis ran on the selected text to avoid token limits.', originalLength: text.length };
+        }
+        return warning || null;
+      })();
+
+      setAnalysisWarning(combinedWarning);
+
       if (chapterId !== activeChapterId) {
         console.warn('Chapter changed during analysis, discarding result');
         return;
       }
-      
-      await updateChapterAnalysis(chapterId, result);
+
+      const resultWithWarning: AnalysisResult = { ...result, warning: combinedWarning };
+
+      await updateChapterAnalysis(chapterId, resultWithWarning);
       emitAnalysisCompleted(chapterId, 'success');
 
-      // --- LORE BIBLE UPDATE (Legacy) ---
-      // We still update Lore for backward compatibility with the Chat Agent
       if (projectId) {
-          const worldRules = result.settingAnalysis?.issues.map(i => `Avoid ${i.issue}: ${i.suggestion}`) || [];
-          const lore: Lore = {
-              characters: result.characters,
-              worldRules: worldRules
-          };
-          await updateProjectLore(projectId, lore);
+        const worldRules = result.settingAnalysis?.issues.map(i => `Avoid ${i.issue}: ${i.suggestion}`) || [];
+        const lore: Lore = {
+          characters: result.characters,
+          worldRules: worldRules
+        };
+        await updateProjectLore(projectId, lore);
       }
 
     } catch (e) {
@@ -154,7 +165,20 @@ export function useQuillAIEngine({
         setIsAnalyzing(false);
       }
     }
-  }, [getCurrentText, activeChapterId, projectSetting, manuscriptIndex, projectId, updateChapterAnalysis, updateProjectLore, trackUsage]);
+  }, [activeChapterId, manuscriptIndex, projectId, projectSetting, trackUsage, updateChapterAnalysis, updateProjectLore]);
+
+  const runAnalysis = useCallback(async () => {
+    await performAnalysis(getCurrentText(), 'full');
+  }, [getCurrentText, performAnalysis]);
+
+  const runSelectionAnalysis = useCallback(async () => {
+    if (!selectionRange?.text?.trim()) {
+      setAnalysisWarning({ message: 'Select some text to analyze a smaller section.' });
+      return;
+    }
+
+    await performAnalysis(selectionRange.text, 'selection');
+  }, [performAnalysis, selectionRange]);
 
   const cancelAnalysis = useCallback(() => {
     analysisAbortRef.current?.abort();
@@ -254,6 +278,7 @@ export function useQuillAIEngine({
     },
     actions: {
       runAnalysis,
+      runSelectionAnalysis,
       cancelAnalysis,
       ...magicActions,
       handleAgentAction,

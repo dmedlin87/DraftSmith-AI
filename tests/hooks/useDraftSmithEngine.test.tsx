@@ -60,14 +60,14 @@ describe('useQuillAIEngine', () => {
 
   const getCurrentText = () => 'chapter text';
 
-  const buildHook = () => renderHook(() => useQuillAIEngine({
+  const buildHook = (selectionRange: any = null) => renderHook(() => useQuillAIEngine({
     getCurrentText,
     currentProject: project,
     activeChapterId: 'chapter-1',
     updateChapterAnalysis: updateChapterAnalysisMock,
     updateProjectLore: updateProjectLoreMock,
     commit: commitMock,
-    selectionRange: null,
+    selectionRange,
     clearSelection: vi.fn(),
   }));
 
@@ -85,7 +85,7 @@ describe('useQuillAIEngine', () => {
       expect.any(AbortSignal)
     );
     expect(trackUsageMock).toHaveBeenCalledWith(baseResult.usage, ModelConfig.analysis);
-    expect(updateChapterAnalysisMock).toHaveBeenCalledWith('chapter-1', baseResult.result);
+    expect(updateChapterAnalysisMock).toHaveBeenCalledWith('chapter-1', { ...baseResult.result, warning: null });
     expect(updateProjectLoreMock).toHaveBeenCalledWith('project-1', {
       characters: [],
       worldRules: []
@@ -252,5 +252,45 @@ describe('useQuillAIEngine', () => {
 
     expect(analyzeDraftMock).not.toHaveBeenCalled();
     expect(result.current.state.isAnalyzing).toBe(false);
+  });
+
+  it('persists warnings from truncated input', async () => {
+    analyzeDraftMock.mockResolvedValue({
+      ...baseResult,
+      warning: { message: 'Truncated input', removedChars: 10, removedPercent: 5, originalLength: 200 },
+    });
+
+    const { result } = buildHook();
+
+    await act(async () => {
+      await result.current.actions.runAnalysis();
+    });
+
+    expect(updateChapterAnalysisMock).toHaveBeenCalledWith(
+      'chapter-1',
+      expect.objectContaining({ warning: expect.objectContaining({ message: 'Truncated input' }) })
+    );
+    expect(result.current.state.analysisWarning?.message).toContain('Truncated input');
+  });
+
+  it('offers selection-only analysis when provided a selection', async () => {
+    analyzeDraftMock.mockResolvedValue(baseResult);
+    const selectionRange = { start: 0, end: 5, text: 'slice' };
+    const { result } = buildHook(selectionRange);
+
+    await act(async () => {
+      await result.current.actions.runSelectionAnalysis();
+    });
+
+    expect(analyzeDraftMock).toHaveBeenCalledWith(
+      'slice',
+      project.setting,
+      project.manuscriptIndex,
+      expect.any(AbortSignal)
+    );
+    expect(updateChapterAnalysisMock).toHaveBeenCalledWith(
+      'chapter-1',
+      expect.objectContaining({ warning: expect.objectContaining({ message: expect.stringContaining('selected text') }) })
+    );
   });
 });

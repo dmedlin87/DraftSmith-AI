@@ -81,13 +81,18 @@ describe('AnalysisPanel', () => {
         isLoading={false}
         currentText=""
         onNavigate={vi.fn()}
-        warning="Text truncated"
+        warning={{ message: 'Text truncated', removedChars: 120, removedPercent: 10, originalLength: 1200 }}
+        onAnalyzeSelection={vi.fn()}
+        hasSelection
         contradictions={[]}
       />
     );
 
     expect(screen.getByText('Analysis Warning')).toBeInTheDocument();
     expect(screen.getByText('Text truncated')).toBeInTheDocument();
+    expect(screen.getByText(/Removed 120/)).toBeInTheDocument();
+    expect(screen.getByText('Analyze selection only')).toBeInTheDocument();
+    expect(screen.getByText('Token limit guidance')).toBeInTheDocument();
   });
 
   it('renders analysis content and supports navigation and fix actions', () => {

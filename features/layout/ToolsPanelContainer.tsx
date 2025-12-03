@@ -24,6 +24,8 @@ export const ToolsPanelContainer: React.FC<ToolsPanelContainerProps> = ({ isZenM
   // 3. Engine State
   const { state: engineState, actions: engineActions, contradictions } = useEngine();
 
+  const analysisWarning = engineState.analysisWarning || activeChapter?.lastAnalysis?.warning || null;
+
   // 4. Derived Context (Memoized)
   const editorContext = useMemo(() => ({
     cursorPosition: editor?.state.selection.from || 0,
@@ -44,7 +46,9 @@ export const ToolsPanelContainer: React.FC<ToolsPanelContainerProps> = ({ isZenM
       derivedLore={currentProject?.lore}
       history={history}
       isAnalyzing={engineState.isAnalyzing}
-      analysisWarning={engineState.analysisWarning}
+      analysisWarning={analysisWarning}
+      onAnalyzeSelection={engineActions.runSelectionAnalysis}
+      hasSelection={!!selectionRange?.text}
       onAgentAction={engineActions.handleAgentAction}
       onNavigateToText={handleNavigateToIssue}
       onRestore={restore}

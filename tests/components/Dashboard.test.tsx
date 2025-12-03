@@ -79,11 +79,14 @@ describe('Dashboard', () => {
         isLoading={false}
         analysis={analysis}
         currentText="Sample text"
-        warning="Text truncated for analysis"
+        warning={{ message: 'Text truncated for analysis', removedChars: 10, removedPercent: 5, originalLength: 200 }}
+        onAnalyzeSelection={vi.fn()}
+        hasSelection
       />
     );
 
     expect(screen.getByText('Analysis Warning')).toBeInTheDocument();
     expect(screen.getByText('Text truncated for analysis')).toBeInTheDocument();
+    expect(screen.getByText('Analyze selection only')).toBeInTheDocument();
   });
 });

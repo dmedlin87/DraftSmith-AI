@@ -103,10 +103,10 @@ describe('prepareAnalysisText', () => {
   it('truncates and warns when over limit', () => {
     const text = 'a'.repeat(3_500_000); // Over the 3M limit
     const result = prepareAnalysisText(text);
-    
+
     expect(result.text.length).toBeLessThan(text.length);
     expect(result.warning).toBeDefined();
-    expect(result.warning).toContain('truncated');
+    expect(result.warning?.message).toContain('truncated');
   });
 
   it('truncates at paragraph boundary near analysis limit', () => {
@@ -124,15 +124,15 @@ describe('prepareAnalysisText', () => {
   it('warning includes removed character count', () => {
     const text = 'a'.repeat(3_500_000);
     const result = prepareAnalysisText(text);
-    
-    expect(result.warning).toMatch(/\d+.*characters/);
+
+    expect(result.warning?.removedChars).toBeGreaterThan(0);
   });
 
   it('warning includes percentage removed', () => {
     const text = 'a'.repeat(3_500_000);
     const result = prepareAnalysisText(text);
-    
-    expect(result.warning).toMatch(/\d+%/);
+
+    expect(result.warning?.removedPercent).toBeGreaterThan(0);
   });
 });
 

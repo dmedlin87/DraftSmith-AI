@@ -66,6 +66,7 @@ beforeEach(() => {
 
   mockActions = {
     runAnalysis: vi.fn(),
+    runSelectionAnalysis: vi.fn(),
     cancelAnalysis: vi.fn(),
     handleRewrite: vi.fn(),
     handleHelp: vi.fn(),

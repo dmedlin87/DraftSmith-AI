@@ -88,6 +88,8 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
     totalLength: currentText.length
   };
 
+  const persistedWarning = engineState.analysisWarning || activeChapter?.lastAnalysis?.warning || null;
+
   const handleInspectHistory = (item: HistoryItem) => {
     setViewingHistoryDiff({
         original: item.previousContent,
@@ -257,12 +259,14 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
             </div>
             <div className="flex-1 overflow-hidden relative">
               {activeTab === SidebarTab.ANALYSIS && (
-                <AnalysisPanel 
-                  analysis={activeChapter?.lastAnalysis || null} 
-                  isLoading={engineState.isAnalyzing} 
+                <AnalysisPanel
+                  analysis={activeChapter?.lastAnalysis || null}
+                  isLoading={engineState.isAnalyzing}
                   currentText={currentText}
                   onNavigate={handleNavigateToIssue}
-                  warning={engineState.analysisWarning} 
+                  warning={persistedWarning}
+                  onAnalyzeSelection={engineActions.runSelectionAnalysis}
+                  hasSelection={!!selectionRange?.text}
                 />
               )}
               {activeTab === SidebarTab.CHAT && (

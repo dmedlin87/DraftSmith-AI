@@ -1,5 +1,5 @@
 import { Type, UsageMetadata } from "@google/genai";
-import { AnalysisResult, AnalysisResultSchema, PlotSuggestion, CharacterProfile } from "../../types";
+import { AnalysisResult, AnalysisResultSchema, PlotSuggestion, CharacterProfile, AnalysisWarning } from "../../types";
 import { ManuscriptIndex } from "../../types/schema";
 import { ModelConfig, ThinkingBudgets } from "../../config/models";
 import { ai } from "./client";
@@ -50,11 +50,11 @@ const EMPTY_ANALYSIS: AnalysisResult = {
 };
 
 export const analyzeDraft = async (
-    text: string, 
-    setting?: { timePeriod: string, location: string }, 
+    text: string,
+    setting?: { timePeriod: string, location: string },
     manuscriptIndex?: ManuscriptIndex,
     _signal?: AbortSignal
-): Promise<{ result: AnalysisResult; usage?: UsageMetadata; warning?: string }> => {
+): Promise<{ result: AnalysisResult; usage?: UsageMetadata; warning?: AnalysisWarning }> => {
   const model = ModelConfig.analysis; 
   
   const settingContext = setting 

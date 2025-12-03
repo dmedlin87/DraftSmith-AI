@@ -7,6 +7,7 @@
 
 import { TokenLimits, ModelId } from '../../config/models';
 import { ApiDefaults, estimateTokens } from '../../config/api';
+import { AnalysisWarning } from '../../types';
 
 export interface TokenCheckResult {
   valid: boolean;
@@ -105,7 +106,7 @@ export function truncateToLimit(
  */
 export function prepareAnalysisText(text: string): {
   text: string;
-  warning?: string;
+  warning?: AnalysisWarning;
 } {
   const maxLength: number = ApiDefaults.maxAnalysisLength;
   
@@ -125,8 +126,12 @@ export function prepareAnalysisText(text: string): {
   
   return {
     text: text.substring(0, breakPoint),
-    warning: `Text truncated: ${removedChars.toLocaleString()} characters (${removedPercent}%) ` +
-      `exceeds analysis limit. Consider analyzing in sections.`,
+    warning: {
+      message: `Text truncated: ${removedChars.toLocaleString()} characters (${removedPercent}%) exceeds analysis limit. Consider analyzing in sections.`,
+      removedChars,
+      removedPercent,
+      originalLength: text.length,
+    },
   };
 }
 

@@ -120,6 +120,7 @@ describe('EditorLayout', () => {
       },
       actions: {
         runAnalysis: mockRunAnalysis,
+        runSelectionAnalysis: vi.fn(),
         handleRewrite: vi.fn(),
         handleHelp: vi.fn(),
         applyVariation: vi.fn(),
@@ -180,7 +181,7 @@ describe('EditorLayout', () => {
   it('shows loading state when analyzing', () => {
     mockUseEngine.mockReturnValue({
       state: { isAnalyzing: true, pendingDiff: null },
-      actions: { runAnalysis: mockRunAnalysis },
+      actions: { runAnalysis: mockRunAnalysis, runSelectionAnalysis: vi.fn() },
     });
     
     render(<EditorLayout {...defaultProps} />);

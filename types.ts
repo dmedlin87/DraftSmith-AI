@@ -24,6 +24,13 @@ export interface CharacterProfile {
   developmentSuggestion: string;
 }
 
+export interface AnalysisWarning {
+  message: string;
+  removedChars?: number;
+  removedPercent?: number;
+  originalLength?: number;
+}
+
 export interface AnalysisResult {
   summary: string;
   strengths: string[];
@@ -67,8 +74,10 @@ export interface AnalysisResult {
   }>;
 
   characters: CharacterProfile[];
-  
+
   generalSuggestions: string[];
+
+  warning?: AnalysisWarning | null;
 }
 
 // Zod schemas for runtime validation of AI responses
@@ -122,6 +131,12 @@ export const AnalysisResultSchema = z.object({
   })).default([]),
   characters: z.array(CharacterProfileSchema).default([]),
   generalSuggestions: z.array(z.string()).default([]),
+  warning: z.object({
+    message: z.string(),
+    removedChars: z.number().optional(),
+    removedPercent: z.number().optional(),
+    originalLength: z.number().optional(),
+  }).nullish(),
 });
 
 export interface PlotSuggestion {

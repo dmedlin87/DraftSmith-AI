@@ -111,6 +111,7 @@ const baseEngineState = () => ({
   },
   actions: {
     runAnalysis: vi.fn(),
+    runSelectionAnalysis: vi.fn(),
     handleRewrite: vi.fn(),
     handleHelp: vi.fn(),
     applyVariation: vi.fn(),

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { AnalysisResult } from '@/types';
+import { AnalysisResult, AnalysisWarning } from '@/types';
 import { findQuoteRange } from '@/features/shared';
 import { ScoreCard } from './ScoreCard';
 import { IssueCard } from './IssueCard';
@@ -12,12 +12,14 @@ interface AnalysisPanelProps {
   currentText: string;
   onNavigate: (start: number, end: number) => void;
   onFixRequest?: (issueContext: string, suggestion: string) => void;
-  warning?: string | null;
+  warning?: AnalysisWarning | null;
+  onAnalyzeSelection?: () => void;
+  hasSelection?: boolean;
   contradictions?: Contradiction[];
   derivedLore?: Lore | null;
 }
 
-export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, currentText, onNavigate, onFixRequest, warning, contradictions = [], derivedLore }) => {
+export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoading, currentText, onNavigate, onFixRequest, warning, onAnalyzeSelection, hasSelection, contradictions = [], derivedLore }) => {
   
   const handleQuoteClick = (quote?: string) => {
     if (!quote) return;
@@ -87,9 +89,42 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, isLoadin
       {warning && (
         <div className="flex items-start gap-3 p-3 rounded-lg border border-[var(--warning-300)] bg-[var(--warning-50)] text-[var(--warning-800)] animate-slide-up">
           <div className="mt-0.5 text-[var(--warning-600)] font-bold">!</div>
-          <div>
-            <p className="text-[var(--text-sm)] font-semibold text-[var(--warning-800)]">Analysis Warning</p>
-            <p className="text-[var(--text-xs)] leading-relaxed">{warning}</p>
+          <div className="flex-1 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-[var(--text-sm)] font-semibold text-[var(--warning-800)]">Analysis Warning</p>
+                <p className="text-[var(--text-xs)] leading-relaxed">{warning.message}</p>
+                {warning.removedChars !== undefined && warning.removedPercent !== undefined && (
+                  <p className="text-[var(--text-xs)] text-[var(--warning-700)]">
+                    Removed {warning.removedChars.toLocaleString()} characters ({warning.removedPercent}% of the input).
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {onAnalyzeSelection && (
+                <button
+                  type="button"
+                  onClick={onAnalyzeSelection}
+                  disabled={!hasSelection}
+                  className={`px-3 py-1 rounded-md text-[var(--text-xs)] font-semibold transition-colors ${
+                    hasSelection
+                      ? 'bg-[var(--warning-600)] text-white hover:bg-[var(--warning-700)]'
+                      : 'bg-[var(--warning-100)] text-[var(--warning-600)] cursor-not-allowed'
+                  }`}
+                >
+                  Analyze selection only
+                </button>
+              )}
+              <a
+                className="px-3 py-1 rounded-md text-[var(--text-xs)] font-semibold bg-[var(--warning-100)] text-[var(--warning-700)] hover:bg-[var(--warning-200)]"
+                href="/token-limits.html"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Token limit guidance
+              </a>
+            </div>
           </div>
         </div>
       )}

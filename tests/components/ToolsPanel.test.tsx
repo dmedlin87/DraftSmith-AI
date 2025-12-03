@@ -47,7 +47,7 @@ vi.mock('@/features/agent', () => ({
 
 vi.mock('@/features/analysis', () => ({
   Dashboard: ({ isLoading, warning }: any) => (
-    <div data-testid="analysis-dashboard" data-loading={isLoading} data-warning={warning}>
+    <div data-testid="analysis-dashboard" data-loading={isLoading} data-warning={warning?.message || warning}>
       Analysis Dashboard
     </div>
   ),
@@ -139,7 +139,7 @@ describe('ToolsPanel', () => {
 
     it('passes warning prop to Dashboard', () => {
       mockActiveTab = SidebarTab.ANALYSIS;
-      render(<ToolsPanel {...defaultProps} analysisWarning="Test warning" />);
+      render(<ToolsPanel {...defaultProps} analysisWarning={{ message: 'Test warning' }} />);
 
       expect(screen.getByTestId('analysis-dashboard')).toHaveAttribute('data-warning', 'Test warning');
     });
