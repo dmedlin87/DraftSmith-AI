@@ -67,14 +67,14 @@ export async function executeAppBrainToolCall(
       // Editing
       case 'update_manuscript':
         result = await actions.updateManuscript({
-          searchText: args.search_text as string,
-          replacementText: args.replacement_text as string,
+          searchText: args.searchText as string,
+          replacementText: args.replacementText as string,
           description: args.description as string,
         });
         break;
       case 'append_to_manuscript':
         result = await actions.appendText(
-          args.text_to_add as string,
+          args.text as string,
           args.description as string,
         );
         break;
@@ -116,6 +116,14 @@ export async function executeAppBrainToolCall(
         );
         result = `Highlighted text at ${args.start}-${args.end}`;
         break;
+      case 'set_selection':
+        actions.highlightText(
+          args.start as number,
+          args.end as number,
+          'info',
+        );
+        result = `Selected text from ${args.start} to ${args.end}`;
+        break;
 
       // Knowledge
       case 'query_lore':
@@ -132,7 +140,7 @@ export async function executeAppBrainToolCall(
       case 'rewrite_selection':
         result = await actions.rewriteSelection({
           mode: args.mode as any,
-          targetTone: args.target_tone as string,
+          targetTone: args.targetTone as string,
         });
         break;
       case 'continue_writing':
