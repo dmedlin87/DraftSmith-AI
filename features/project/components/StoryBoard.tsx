@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import type { Variants } from 'framer-motion';
 import { useProjectStore } from '../store/useProjectStore';
 import { Chapter } from '@/types/schema';
 
 // Animation variants for cards
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, scale: 0.8, y: 20 },
   visible: (i: number) => ({
     opacity: 1,
@@ -12,12 +13,12 @@ const cardVariants = {
     y: 0,
     transition: {
       delay: i * 0.05,
-      type: 'spring',
+      type: 'spring' as const,
       stiffness: 300,
-      damping: 25
-    }
+      damping: 25,
+    },
   }),
-  exit: { opacity: 0, scale: 0.8, transition: { duration: 0.2 } }
+  exit: { opacity: 0, scale: 0.8, transition: { duration: 0.2 } },
 };
 
 /**
@@ -48,9 +49,9 @@ interface SceneCardProps {
   isActive: boolean;
   isDragging: boolean;
   onSelect: () => void;
-  onDragStart: (e: React.DragEvent, index: number) => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, index: number) => void;
+  onDragStart: (e: React.DragEvent<HTMLDivElement>, index: number) => void;
+  onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>, index: number) => void;
 }
 
 const SceneCard: React.FC<SceneCardProps> = ({
@@ -68,30 +69,32 @@ const SceneCard: React.FC<SceneCardProps> = ({
   const wordCount = chapter.content.split(/\s+/).filter(Boolean).length;
 
   return (
-    <motion.div
-      layout
-      layoutId={chapter.id}
+    <div
       draggable
       onDragStart={(e) => onDragStart(e, index)}
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, index)}
-      onClick={onSelect}
-      whileHover={{ scale: 1.02, y: -4, rotate: isActive ? 0 : 0.5 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-      className={`
-        group relative cursor-pointer overflow-hidden
-        ${isDragging ? 'opacity-50' : 'opacity-100'}
-      `}
-      style={{
-        // Index card styling
-        background: 'linear-gradient(135deg, #fffef5 0%, #fff9e6 100%)',
-        borderRadius: '2px',
-        boxShadow: isActive 
-          ? '0 8px 25px -5px rgba(99, 102, 241, 0.4), 0 0 0 2px rgb(99, 102, 241)'
-          : '0 4px 12px -2px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1)',
-      }}
     >
+      <motion.div
+        layout
+        layoutId={chapter.id}
+        onClick={onSelect}
+        whileHover={{ scale: 1.02, y: -4, rotate: isActive ? 0 : 0.5 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+        className={`
+          group relative cursor-pointer overflow-hidden
+          ${isDragging ? 'opacity-50' : 'opacity-100'}
+        `}
+        style={{
+          // Index card styling
+          background: 'linear-gradient(135deg, #fffef5 0%, #fff9e6 100%)',
+          borderRadius: '2px',
+          boxShadow: isActive 
+            ? '0 8px 25px -5px rgba(99, 102, 241, 0.4), 0 0 0 2px rgb(99, 102, 241)'
+            : '0 4px 12px -2px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1)',
+        }}
+      >
       {/* Pacing Heat Map Bar at Top */}
       <div className="relative h-2">
         <div 
@@ -195,7 +198,8 @@ const SceneCard: React.FC<SceneCardProps> = ({
       {isActive && (
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500" />
       )}
-    </motion.div>
+      </motion.div>
+    </div>
   );
 };
 
@@ -217,16 +221,15 @@ export const StoryBoard: React.FC<StoryBoardProps> = ({ onSwitchToEditor }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newChapterTitle, setNewChapterTitle] = useState('');
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
     setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, dropIndex: number) => {
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null);
