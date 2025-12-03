@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@/features/project', () => ({
@@ -15,6 +15,10 @@ vi.mock('@/features/shared', () => ({
 
 vi.mock('@/features/analysis', () => ({
   AnalysisProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="analysis-provider">{children}</div>,
+  useAnalysis: () => ({
+    analysisState: {},
+    setAnalysisState: vi.fn(),
+  }),
 }));
 
 vi.mock('@/features/layout', () => ({
@@ -30,11 +34,16 @@ describe('App', () => {
   let store: ReturnType<typeof mockUseProjectStore>;
 
   beforeEach(() => {
-    const flushPendingWrites = vi.fn();
+    const flushPendingWrites = vi.fn().mockResolvedValue({ pendingCount: 0, errors: [] });
     store = {
       init: vi.fn(),
       isLoading: false,
       flushPendingWrites,
+      projects: [],
+      currentProject: null,
+      chapters: [],
+      activeChapterId: null,
+      getActiveChapter: vi.fn(),
     } as any;
     mockUseProjectStore.mockReturnValue(store);
   });
@@ -55,6 +64,11 @@ describe('App', () => {
       init: vi.fn(),
       isLoading: true,
       flushPendingWrites: vi.fn(),
+      projects: [],
+      currentProject: null,
+      chapters: [],
+      activeChapterId: null,
+      getActiveChapter: vi.fn(),
     });
 
     render(<App />);
@@ -62,12 +76,17 @@ describe('App', () => {
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
   });
 
-  it('flushes pending writes on visibility change and unload', () => {
+  it('flushes pending writes on visibility change and unload', async () => {
     const flushPendingWrites = vi.fn();
     mockUseProjectStore.mockReturnValue({
       init: vi.fn(),
       isLoading: false,
       flushPendingWrites,
+      projects: [],
+      currentProject: null,
+      chapters: [],
+      activeChapterId: null,
+      getActiveChapter: vi.fn(),
     });
 
     render(<App />);
@@ -80,6 +99,9 @@ describe('App', () => {
     fireEvent(document, new Event('visibilitychange'));
     fireEvent(window, new Event('beforeunload'));
 
-    expect(flushPendingWrites).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(flushPendingWrites).toHaveBeenCalledTimes(2));
+
+    expect(flushPendingWrites).toHaveBeenCalledWith({ keepAlive: true, reason: 'visibilitychange' });
+    expect(flushPendingWrites).toHaveBeenCalledWith({ keepAlive: true, reason: 'beforeunload' });
   });
 });

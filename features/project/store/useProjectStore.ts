@@ -29,14 +29,42 @@ interface ProjectState {
   updateManuscriptIndex: (projectId: string, index: ManuscriptIndex) => Promise<void>;
   deleteChapter: (chapterId: string) => Promise<void>;
   
-  flushPendingWrites: () => Promise<void>;
+  flushPendingWrites: (options?: { reason?: string; keepAlive?: boolean }) => Promise<{ pendingCount: number; errors: unknown[] }>;
   getActiveChapter: () => Chapter | undefined;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => {
   const WRITE_DEBOUNCE_MS = 400;
-  const pendingChapterWrites = new Map<string, { timer: ReturnType<typeof setTimeout>; promise: Promise<void>; resolve?: () => void }>();
+  type PendingChapterWrite = { timer: ReturnType<typeof setTimeout>; promise: Promise<void>; resolve?: () => void };
+
+  const pendingChapterWrites = new Map<string, PendingChapterWrite>();
   const latestChapterContent = new Map<string, { content: string; updatedAt: number }>();
+
+  const queuePersistenceKeepAlive = async (pendingCount: number, reason: string) => {
+    if (pendingCount === 0) return;
+
+    if (typeof navigator === 'undefined') return;
+
+    const payload = JSON.stringify({
+      pendingCount,
+      reason,
+      timestamp: Date.now(),
+    });
+
+    try {
+      if (typeof navigator.sendBeacon === 'function') {
+        const beaconBlob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/__quill/pending-writes', beaconBlob);
+      }
+
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.sync?.register('flush-pending-writes');
+      }
+    } catch (error) {
+      console.error('[ProjectStore] Failed to queue persistence keepalive for pending writes', error);
+    }
+  };
 
   const runProjectChapterTransaction = async (
     body: () => Promise<void>,
@@ -68,6 +96,7 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       }
     } catch (error) {
       console.error('[ProjectStore] Failed to persist chapter content', error);
+      throw error;
     } finally {
       latestChapterContent.delete(chapterId);
       pendingChapterWrites.delete(chapterId);
@@ -96,16 +125,24 @@ export const useProjectStore = create<ProjectState>((set, get) => {
     return promise;
   };
 
-  const flushAllPendingWrites = async (): Promise<void> => {
-    const entries = Array.from(pendingChapterWrites.entries());
-    if (entries.length === 0) return;
+  const flushAllPendingWrites = async (
+    entries: [string, PendingChapterWrite][],
+  ): Promise<{ pendingCount: number; errors: unknown[] }> => {
+    const pendingCount = entries.length;
+    if (pendingCount === 0) return { pendingCount, errors: [] };
 
-    await Promise.all(
+    const results = await Promise.allSettled(
       entries.map(([chapterId, entry]) => {
         clearTimeout(entry.timer);
         return persistChapter(chapterId, entry.resolve);
       }),
     );
+
+    const errors = results
+      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      .map(result => result.reason);
+
+    return { pendingCount, errors };
   };
 
   return {
@@ -226,8 +263,24 @@ export const useProjectStore = create<ProjectState>((set, get) => {
     });
   },
 
-  flushPendingWrites: async () => {
-    await flushAllPendingWrites();
+  flushPendingWrites: async ({ reason = 'teardown', keepAlive = false } = {}) => {
+    const entries = Array.from(pendingChapterWrites.entries());
+    const pendingCount = entries.length;
+
+    if (keepAlive && pendingCount > 0) {
+      void queuePersistenceKeepAlive(pendingCount, reason);
+    }
+
+    const { errors } = await flushAllPendingWrites(entries);
+
+    if (pendingCount > 0 && errors.length > 0) {
+      console.error(
+        `[ProjectStore] Failed to flush ${errors.length}/${pendingCount} pending writes during ${reason}`,
+        errors,
+      );
+    }
+
+    return { pendingCount, errors };
   },
 
   createChapter: async (title) => {

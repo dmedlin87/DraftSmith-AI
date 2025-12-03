@@ -11,14 +11,35 @@ const App: React.FC = () => {
   useEffect(() => { initStore(); }, [initStore]);
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        flushPendingWrites();
+    const flushAndReport = async (reason: 'visibilitychange' | 'beforeunload') => {
+      try {
+        const { pendingCount, errors } = (await flushPendingWrites({ reason, keepAlive: true })) ?? {
+          pendingCount: 0,
+          errors: [],
+        };
+
+        if (pendingCount > 0) {
+          const summary = `[App] ${errors.length > 0 ? 'Failed to flush' : 'Flushed'} ${pendingCount} pending writes during ${reason}`;
+
+          if (errors.length > 0) {
+            console.error(summary, errors);
+          } else {
+            console.info(summary);
+          }
+        }
+      } catch (error) {
+        console.error(`[App] Unexpected error while flushing pending writes during ${reason}`, error);
       }
     };
 
-    const handleBeforeUnload = () => {
-      flushPendingWrites();
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden') {
+        await flushAndReport('visibilitychange');
+      }
+    };
+
+    const handleBeforeUnload = async () => {
+      await flushAndReport('beforeunload');
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
