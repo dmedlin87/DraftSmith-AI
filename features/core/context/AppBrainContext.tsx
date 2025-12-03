@@ -47,7 +47,7 @@ import {
   ContinueWritingCommand,
 } from '@/services/commands/generation';
 // Types imported from @/types as needed
-import { rewriteText } from '@/services/gemini/agent';
+import { generateContinuation, rewriteText } from '@/services/gemini/agent';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONTEXT TYPES
@@ -456,8 +456,13 @@ export const AppBrainProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             return result.result[0] || text;
           },
           generateContinuation: async (context: string) => {
-            // TODO: Implement continuation generation
-            return `[Continuation based on: "${context.slice(-50)}..."]`;
+            try {
+              const { result } = await generateContinuation(context);
+              return result;
+            } catch (error) {
+              console.error('[AppBrainContext] Continuation failed', error);
+              return 'Unable to generate continuation right now.';
+            }
           },
         },
       );
@@ -481,8 +486,13 @@ export const AppBrainProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return result.result[0] || text;
         },
         generateContinuation: async (context: string) => {
-          // TODO: Implement actual continuation via Gemini
-          return `[AI continuation based on context...]`;
+          try {
+            const { result } = await generateContinuation(context);
+            return result;
+          } catch (error) {
+            console.error('[AppBrainContext] Continuation failed', error);
+            return 'Unable to generate continuation right now.';
+          }
         },
       });
     },

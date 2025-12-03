@@ -56,6 +56,12 @@ export const CONTEXTUAL_HELP_SYSTEM_INSTRUCTION = `You are a helpful writing ass
   If type is 'Explain': Provide a concise definition or historical context for the selected term/phrase.
   If type is 'Thesaurus': Provide 5 synonyms that fit the tone and period of the text. Return ONLY a comma-separated list.`;
 
+export const CONTINUATION_SYSTEM_INSTRUCTION = `You are Quill AI, a narrative continuation model.
+Your goal is to seamlessly continue the manuscript using the provided context.
+- Mirror the existing voice, pacing, POV, and tense.
+- Avoid summarizing; write in-scene prose that flows naturally from the last line.
+- Do not repeat the provided context. Do not add meta commentary.`;
+
 export const AGENT_SYSTEM_INSTRUCTION = `You are Quill AI Agent, an advanced AI editor embedded in a text editor. 
       
       CAPABILITIES:

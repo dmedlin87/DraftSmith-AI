@@ -88,7 +88,7 @@ vi.mock('@/services/commands/generation', () => ({
   ContinueWritingCommand: vi.fn().mockImplementation(() => ({ execute: vi.fn().mockResolvedValue('continue') })),
 }));
 
-vi.mock('@/services/gemini/agent', () => ({ rewriteText: vi.fn() }));
+vi.mock('@/services/gemini/agent', () => ({ rewriteText: vi.fn(), generateContinuation: vi.fn() }));
 
 const wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <AppBrainProvider>{children}</AppBrainProvider>

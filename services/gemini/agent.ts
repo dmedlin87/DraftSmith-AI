@@ -3,7 +3,12 @@ import { AnalysisResult, CharacterProfile } from "../../types";
 import { Lore } from "../../types/schema";
 import { ModelConfig } from "../../config/models";
 import { ai } from "./client";
-import { REWRITE_SYSTEM_INSTRUCTION, CONTEXTUAL_HELP_SYSTEM_INSTRUCTION, AGENT_SYSTEM_INSTRUCTION } from "./prompts";
+import {
+  REWRITE_SYSTEM_INSTRUCTION,
+  CONTEXTUAL_HELP_SYSTEM_INSTRUCTION,
+  AGENT_SYSTEM_INSTRUCTION,
+  CONTINUATION_SYSTEM_INSTRUCTION,
+} from "./prompts";
 import { safeParseJsonWithValidation, validators } from "./resilientParser";
 import { Persona, buildPersonaInstruction } from "../../types/personas";
 import { CritiqueIntensity, DEFAULT_CRITIQUE_INTENSITY } from "../../types/critiqueSettings";
@@ -171,6 +176,35 @@ ${mode === 'Tone Tuner' ? `Target Tone: ${tone}` : ''}`;
   } catch (e) {
     console.error("Rewrite failed", e);
     return { result: [] };
+  }
+};
+
+export const generateContinuation = async (
+  context: string,
+  _signal?: AbortSignal
+): Promise<{ result: string; usage?: UsageMetadata }> => {
+  const model = ModelConfig.analysis;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: `Manuscript context (continue seamlessly):\n${context}`,
+      config: {
+        systemInstruction: CONTINUATION_SYSTEM_INSTRUCTION,
+      },
+    });
+
+    const continuation = response.text?.trim();
+
+    if (!continuation) {
+      throw new AIError('No continuation was returned from the model.');
+    }
+
+    return { result: continuation, usage: response.usageMetadata };
+  } catch (error) {
+    const normalized = normalizeAIError(error, { contextLength: context.length });
+    console.error('[generateContinuation] Failed to generate continuation', normalized);
+    throw normalized;
   }
 };
 

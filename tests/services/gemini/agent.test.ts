@@ -4,13 +4,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { 
-  rewriteText, 
-  getContextualHelp, 
-  createAgentSessionLegacy as createAgentSession, 
+import {
+  rewriteText,
+  getContextualHelp,
+  createAgentSessionLegacy as createAgentSession,
   agentTools,
   ALL_AGENT_TOOLS,
   QuillAgent,
+  generateContinuation,
 } from '@/services/gemini/agent';
 import { 
   mockUsageMetadata,
@@ -230,6 +231,42 @@ describe('rewriteText', () => {
 
     expect(result.result).toEqual(['Result']);
     expect(mockAi.models.generateContent).toHaveBeenCalled();
+  });
+});
+
+describe('generateContinuation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns continuation from the model output', async () => {
+    const mockResponse = {
+      text: 'The lantern guttered as the storm closed in.',
+      usageMetadata: mockUsageMetadata,
+    };
+
+    mockAi.models.generateContent.mockResolvedValue(mockResponse);
+
+    const result = await generateContinuation('She stepped outside and lifted her face to the rain.');
+
+    expect(result.result).toBe('The lantern guttered as the storm closed in.');
+    expect(result.usage).toEqual(mockUsageMetadata);
+    expect(mockAi.models.generateContent).toHaveBeenCalledWith({
+      model: expect.any(String),
+      contents: expect.stringContaining('She stepped outside and lifted her face to the rain.'),
+      config: { systemInstruction: expect.any(String) }
+    });
+  });
+
+  it('throws an AIError when no continuation text is returned', async () => {
+    const mockResponse = {
+      text: '',
+      usageMetadata: mockUsageMetadata,
+    };
+
+    mockAi.models.generateContent.mockResolvedValue(mockResponse);
+
+    await expect(generateContinuation('Context without response')).rejects.toBeInstanceOf(AIError);
   });
 });
 
