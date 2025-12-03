@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.unmock('@/features/project/store/useProjectStore');
 
 import { useProjectStore } from '@/features/project/store/useProjectStore';
+import { db } from '@/services/db';
 
 // Mock the database
 vi.mock('@/services/db', () => ({
@@ -44,6 +45,8 @@ vi.mock('@/services/manuscriptIndexer', () => ({
 
 describe('useProjectStore', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+
     // Reset the store before each test
     useProjectStore.setState({
       projects: [],
@@ -324,6 +327,46 @@ describe('useProjectStore', () => {
       expect(state.chapters[0].id).toBe('ch-3');
       expect(state.chapters[1].id).toBe('ch-1');
       expect(state.chapters[2].id).toBe('ch-2');
+    });
+
+    it('syncs order metadata and project timestamp when reordering', async () => {
+      const baseChapter = { projectId: 'p1', content: '', updatedAt: 0 };
+      const chapters = [
+        { id: 'ch-1', title: 'Ch 1', order: 0, ...baseChapter },
+        { id: 'ch-2', title: 'Ch 2', order: 1, ...baseChapter },
+        { id: 'ch-3', title: 'Ch 3', order: 2, ...baseChapter },
+      ];
+
+      const project = {
+        id: 'p1',
+        title: 'Test',
+        author: 'Author',
+        manuscriptIndex: { characters: {}, lastUpdated: {} },
+        createdAt: 0,
+        updatedAt: 0,
+      };
+
+      useProjectStore.setState({ chapters, currentProject: project });
+
+      const reordered = [chapters[1], chapters[2], chapters[0]]; // 2,3,1
+      const { reorderChapters } = useProjectStore.getState();
+      await reorderChapters(reordered);
+
+      const state = useProjectStore.getState();
+      const updatedTimestamp = state.chapters[0].updatedAt;
+
+      expect(state.chapters.map((c) => c.order)).toEqual([0, 1, 2]);
+      expect(state.chapters.every((c) => c.updatedAt === updatedTimestamp)).toBe(true);
+
+      expect(db.chapters.bulkPut).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'ch-2', order: 0, updatedAt: updatedTimestamp }),
+          expect.objectContaining({ id: 'ch-3', order: 1, updatedAt: updatedTimestamp }),
+          expect.objectContaining({ id: 'ch-1', order: 2, updatedAt: updatedTimestamp }),
+        ]),
+      );
+
+      expect(db.projects.update).toHaveBeenCalledWith('p1', { updatedAt: updatedTimestamp });
     });
   });
 

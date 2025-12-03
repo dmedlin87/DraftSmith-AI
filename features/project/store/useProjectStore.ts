@@ -260,15 +260,32 @@ export const useProjectStore = create<ProjectState>((set, get) => {
   },
 
   reorderChapters: async (newChapters) => {
-      // Optimistic update
-      set({ chapters: newChapters });
+      if (newChapters.length === 0) {
+        set({ chapters: [] });
+        return;
+      }
 
-      // Update Order in DB
-      const updates = newChapters.map((c, index) => ({
-          ...c,
-          order: index
+      const updatedAt = Date.now();
+
+      // Apply new order locally with synced metadata
+      const reordered = newChapters.map((c, index) => ({
+        ...c,
+        order: index,
+        updatedAt,
       }));
-      await db.chapters.bulkPut(updates);
+
+      set({ chapters: reordered });
+
+      const projectId = reordered[0]?.projectId;
+
+      // Persist order changes and bump project timestamp when available
+      await runProjectChapterTransaction(async () => {
+        await db.chapters.bulkPut(reordered);
+
+        if (projectId) {
+          await db.projects.update(projectId, { updatedAt });
+        }
+      });
   },
 
   updateChapterContent: async (chapterId, content) => {
