@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useProjectStore } from '@/features/project';
 import { EditorProvider, EngineProvider, UsageProvider, ErrorBoundary } from '@/features/shared';
-// import { AppBrainProvider } from '@/features/shared'; // Temporarily disabled
+import { AppBrainProvider } from '@/features/core';
 import { AnalysisProvider } from '@/features/analysis';
 import { MainLayout } from '@/features/layout';
 
@@ -38,10 +38,9 @@ const App: React.FC = () => {
         <EditorProvider>
           <EngineProvider>
             <AnalysisProvider>
-              {/* AppBrainProvider temporarily disabled for debugging */}
-              {/* <AppBrainProvider> */}
+              <AppBrainProvider>
                 <MainLayout />
-              {/* </AppBrainProvider> */}
+              </AppBrainProvider>
             </AnalysisProvider>
           </EngineProvider>
         </EditorProvider>
