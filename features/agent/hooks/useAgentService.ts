@@ -40,6 +40,11 @@ export interface UseAgentServiceOptions {
   interviewTarget?: CharacterProfile;
   /** Project ID for memory context - enables persistent memory */
   projectId?: string | null;
+  /**
+   * Limit the number of stored chat messages to avoid unbounded growth.
+   * Defaults to 200 if not provided.
+   */
+  messageLimit?: number;
 }
 
 export interface AgentServiceResult {
@@ -65,7 +70,11 @@ export function useAgentService(
   options: UseAgentServiceOptions
 ): AgentServiceResult {
   const { lore, chapters = [], analysis, onToolAction, initialPersona, intelligenceHUD, interviewTarget, projectId } = options;
-  
+
+  const messageLimit = Number.isFinite(options.messageLimit) && (options.messageLimit as number) > 0
+    ? Math.floor(options.messageLimit as number)
+    : 200;
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [agentState, setAgentState] = useState<AgentState>({ status: 'idle' });
   const [isProcessing, setIsProcessing] = useState(false);
@@ -78,6 +87,14 @@ export function useAgentService(
   const critiqueIntensity = useSettingsStore(state => state.critiqueIntensity);
   const experienceLevel = useSettingsStore(state => state.experienceLevel);
   const autonomyMode = useSettingsStore(state => state.autonomyMode);
+
+  const appendMessages = useCallback((newMessages: ChatMessage | ChatMessage[]) => {
+    const additions = Array.isArray(newMessages) ? newMessages : [newMessages];
+    setMessages(prev => {
+      const next = [...prev, ...additions];
+      return next.length > messageLimit ? next.slice(-messageLimit) : next;
+    });
+  }, [messageLimit]);
 
   /**
    * Build memory context string from stored memories and goals
@@ -171,23 +188,23 @@ export function useAgentService(
         setIsProcessing(state.status === 'thinking' || state.status === 'executing');
       },
       onMessage: (message) => {
-        setMessages(prev => [...prev, message]);
+        appendMessages(message);
       },
       onToolCallStart: ({ name }) => {
         setAgentState({ status: 'executing' });
-        setMessages(prev => [...prev, {
+        appendMessages({
           role: 'model',
           text: `🛠️ Suggesting Action: ${name}...`,
           timestamp: new Date()
-        }]);
+        });
       },
       onToolCallEnd: ({ result }) => {
         if (result.message.includes('Waiting for user review')) {
-          setMessages(prev => [...prev, {
+          appendMessages({
             role: 'model',
             text: `📝 Reviewing proposed edit...`,
             timestamp: new Date()
-          }]);
+          });
         }
       },
       onError: (error) => {
@@ -197,11 +214,11 @@ export function useAgentService(
           status: 'error',
           lastError: errorMessage
         });
-        setMessages(prev => [...prev, {
+        appendMessages({
           role: 'model',
           text: "Sorry, I encountered an error connecting to the Agent.",
           timestamp: new Date()
-        }]);
+        });
       },
     };
 
@@ -231,6 +248,7 @@ export function useAgentService(
     critiqueIntensity,
     experienceLevel,
     autonomyMode,
+    appendMessages,
     createToolExecutor,
     createMemoryProvider,
     currentPersona,
@@ -286,14 +304,14 @@ export function useAgentService(
     }
     if (controllerRef.current) {
       initSession().then(() => {
-        setMessages(prev => [...prev, {
+        appendMessages({
           role: 'model',
           text: `${currentPersona.icon} Switching to ${currentPersona.name} mode. ${currentPersona.role}.`,
           timestamp: new Date()
-        }]);
+        });
       }).catch(console.error);
     }
-  }, [currentPersona]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [appendMessages, currentPersona]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup on unmount
   useEffect(() => {

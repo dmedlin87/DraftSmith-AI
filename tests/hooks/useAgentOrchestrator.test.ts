@@ -325,4 +325,31 @@ describe('useAgentOrchestrator', () => {
     const modelMessages = result.current.messages.filter(m => m.role === 'model');
     expect(modelMessages.some(m => m.text === 'Should not be shown')).toBe(false);
   });
+
+  it('prunes older messages when the limit is exceeded', async () => {
+    mockSendMessage
+      .mockResolvedValueOnce({ text: '' })
+      .mockResolvedValueOnce({ text: 'Reply 1' })
+      .mockResolvedValueOnce({ text: 'Reply 2' });
+
+    const { result } = renderHook(() => useAgentOrchestrator({ messageLimit: 3 }));
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.sendMessage('First');
+      await result.current.sendMessage('Second');
+    });
+
+    await waitFor(() => {
+      expect(result.current.messages.length).toBe(3);
+    });
+
+    const texts = result.current.messages.map(m => m.text);
+    expect(texts).not.toContain('First');
+    expect(texts).toContain('Second');
+    expect(texts).toContain('Reply 2');
+  });
 });

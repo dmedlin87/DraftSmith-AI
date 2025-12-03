@@ -45,6 +45,11 @@ export interface UseAgentOrchestratorOptions {
   persona?: Persona;
   /** Auto-reinitialize when context changes significantly */
   autoReinit?: boolean;
+  /**
+   * Limit the number of stored chat messages to avoid unbounded growth.
+   * Defaults to 200 if not provided.
+   */
+  messageLimit?: number;
 }
 
 export interface AgentOrchestratorResult {
@@ -76,6 +81,10 @@ export function useAgentOrchestrator(
   options: UseAgentOrchestratorOptions = {}
 ): AgentOrchestratorResult {
   const { mode = 'text', persona: initialPersona, autoReinit = true } = options;
+
+  const messageLimit = Number.isFinite(options.messageLimit) && (options.messageLimit as number) > 0
+    ? Math.floor(options.messageLimit as number)
+    : 200;
   
   // Get unified app state
   const brain = useAppBrain();
@@ -103,6 +112,14 @@ export function useAgentOrchestrator(
   const experienceLevel = useSettingsStore(s => s.experienceLevel);
   const autonomyMode = useSettingsStore(s => s.autonomyMode);
   const manuscriptProjectId = brain.state.manuscript.projectId;
+
+  const appendMessages = useCallback((newMessages: ChatMessage | ChatMessage[]) => {
+    const additions = Array.isArray(newMessages) ? newMessages : [newMessages];
+    setMessages(prev => {
+      const next = [...prev, ...additions];
+      return next.length > messageLimit ? next.slice(-messageLimit) : next;
+    });
+  }, [messageLimit]);
 
   // Keep a ref to the latest brain state so callbacks can read fresh context without re-registering
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,13 +193,13 @@ export function useAgentOrchestrator(
   // Persona change announcement (session reinit is handled by the initSession effect)
   useEffect(() => {
     if (chatRef.current && isReady) {
-      setMessages(prev => [...prev, {
+      appendMessages({
         role: 'model',
         text: `${currentPersona.icon} Switched to ${currentPersona.name}. ${currentPersona.role}.`,
         timestamp: new Date()
-      }]);
+      });
     }
-  }, [currentPersona]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [appendMessages, currentPersona]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─────────────────────────────────────────────────────────────────────────
   // TOOL EXECUTION
@@ -230,7 +247,7 @@ export function useAgentOrchestrator(
       text: messageText,
       timestamp: new Date()
     };
-    setMessages(prev => [...prev, userMsg]);
+    appendMessages(userMsg);
     dispatch({ type: 'START_THINKING', request: messageText });
 
     try {
@@ -278,11 +295,11 @@ ${messageText}
           const functionResponses: { id: string; name: string; response: { result: string } }[] = [];
           for (const call of functionCalls) {
             // Show tool call in UI
-            setMessages(prev => [...prev, {
+            appendMessages({
               role: 'model',
               text: `🛠️ ${call.name}...`,
               timestamp: new Date()
-            }]);
+            });
 
             const actionResult = await executeToolCall(
               call.name,
@@ -305,11 +322,11 @@ ${messageText}
       if (signal.aborted) return;
 
       // Final response
-      setMessages(prev => [...prev, {
+      appendMessages({
         role: 'model',
         text: finalResult.text || 'Done.',
         timestamp: new Date()
-      }]);
+      });
       dispatch({ type: 'FINISH' });
 
     } catch (e) {
@@ -318,16 +335,16 @@ ${messageText}
       console.error('[AgentOrchestrator] Error:', e);
       const errorMessage = e instanceof Error ? e.message : 'Unknown error';
       dispatch({ type: 'ERROR', error: errorMessage });
-      
-      setMessages(prev => [...prev, {
+
+      appendMessages({
         role: 'model',
         text: 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date()
-      }]);
+      });
     } finally {
       // isProcessing is derived from reducer state; no manual reset here
     }
-  }, [brain.context, executeToolCall, mode]);
+  }, [appendMessages, brain.context, executeToolCall, mode]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // CONTROL METHODS

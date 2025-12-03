@@ -161,4 +161,33 @@ describe('useAgentService', () => {
 
     expect(mockCreateAgentSession.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
+
+  it('applies a rolling message limit', async () => {
+    mockSendMessage.mockResolvedValue({ text: 'Reply' });
+
+    const onToolAction = vi.fn().mockResolvedValue('ok');
+
+    const { result } = renderHook(() =>
+      useAgentService('Hello world', {
+        chapters: [{ id: 'ch1', projectId: 'p1', title: 'Chapter 1', content: 'Hello world', order: 0, updatedAt: Date.now() }],
+        analysis: null,
+        onToolAction,
+        messageLimit: 3,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.sendMessage('First', baseContext);
+      await result.current.sendMessage('Second', baseContext);
+    });
+
+    await waitFor(() => {
+      expect(result.current.messages.length).toBe(3);
+    });
+
+    const texts = result.current.messages.map(m => m.text);
+    expect(texts).not.toContain('First');
+    expect(texts).toContain('Second');
+    expect(texts.filter(t => t === 'Reply').length).toBeGreaterThanOrEqual(1);
+  });
 });
