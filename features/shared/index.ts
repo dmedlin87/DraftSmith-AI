@@ -9,7 +9,7 @@ export { UsageProvider, useUsage } from './context/UsageContext';
 
 // Hooks
 export { useQuillAIEngine, type PendingDiff } from './hooks/useDraftSmithEngine';
-export { useEditor, useEngine } from '@/features/core';
+export { EditorProvider, EngineProvider, useEditor, useEngine } from '@/features/core';
 export { useManuscriptIndexer } from './hooks/useManuscriptIndexer';
 export { usePlotSuggestions } from './hooks/usePlotSuggestions';
 export { useViewportCollision } from './hooks/useViewportCollision';
