@@ -115,6 +115,10 @@ describe('command execute paths', () => {
     const continueCmd = new ContinueWritingCommand();
     const continueRes = await continueCmd.execute(undefined as any, mockDeps as any);
     expect(continueRes).toContain('Added');
+    expect(mockDeps.generateContinuation).toHaveBeenCalledWith({
+      context: 'Hello',
+      selection: 'Hello',
+    });
   });
 });
 

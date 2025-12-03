@@ -53,16 +53,28 @@ export class ContinueWritingCommand
       return 'Not enough context to continue. Please write at least a paragraph first.';
     }
 
-    // Get last ~500 characters as context
-    const contextWindow = text.slice(-500);
+    const insertionPoint = deps.selection?.end ?? text.length;
+    const contextStart = Math.max(0, insertionPoint - 500);
+    const contextWindow = deps.currentText.slice(contextStart, insertionPoint);
 
     return deps.runExclusiveEdit(async () => {
-      const continuation = await deps.generateContinuation(contextWindow);
+      const continuation = await deps.generateContinuation({
+        context: contextWindow,
+        selection: deps.selection?.text,
+      });
 
-      const newText = text + '\n\n' + continuation;
+      const before = deps.currentText.slice(0, insertionPoint);
+      const after = deps.currentText.slice(insertionPoint);
+
+      const needsNewline = before.length > 0 && !before.endsWith('\n');
+      const separator = needsNewline ? '\n\n' : '';
+
+      const newText = `${before}${separator}${continuation}${after}`;
       deps.commitEdit(newText, 'AI continuation', 'Agent');
 
-      return `Added ${continuation.split(/\s+/).length} words of continuation.`;
+      const wordCount = continuation.trim().split(/\s+/).filter(Boolean).length;
+
+      return `Added ${wordCount} words of continuation.`;
     });
   }
 }

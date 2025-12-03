@@ -180,15 +180,20 @@ ${mode === 'Tone Tuner' ? `Target Tone: ${tone}` : ''}`;
 };
 
 export const generateContinuation = async (
-  context: string,
+  params: { context: string; selection?: string | null },
   _signal?: AbortSignal
 ): Promise<{ result: string; usage?: UsageMetadata }> => {
   const model = ModelConfig.analysis;
+  const { context, selection } = params;
+
+  const prompt = selection
+    ? `Selected text (continue seamlessly):\n${selection}\n\nSurrounding context:\n${context}`
+    : `Manuscript context (continue seamlessly):\n${context}`;
 
   try {
     const response = await ai.models.generateContent({
       model,
-      contents: `Manuscript context (continue seamlessly):\n${context}`,
+      contents: prompt,
       config: {
         systemInstruction: CONTINUATION_SYSTEM_INSTRUCTION,
       },

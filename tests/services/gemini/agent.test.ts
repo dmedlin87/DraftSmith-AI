@@ -247,7 +247,9 @@ describe('generateContinuation', () => {
 
     mockAi.models.generateContent.mockResolvedValue(mockResponse);
 
-    const result = await generateContinuation('She stepped outside and lifted her face to the rain.');
+    const result = await generateContinuation({
+      context: 'She stepped outside and lifted her face to the rain.',
+    });
 
     expect(result.result).toBe('The lantern guttered as the storm closed in.');
     expect(result.usage).toEqual(mockUsageMetadata);
@@ -266,7 +268,9 @@ describe('generateContinuation', () => {
 
     mockAi.models.generateContent.mockResolvedValue(mockResponse);
 
-    await expect(generateContinuation('Context without response')).rejects.toBeInstanceOf(AIError);
+    await expect(
+      generateContinuation({ context: 'Context without response', selection: null })
+    ).rejects.toBeInstanceOf(AIError);
   });
 });
 

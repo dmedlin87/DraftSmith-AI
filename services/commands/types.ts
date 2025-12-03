@@ -59,7 +59,7 @@ export interface GenerationDependencies {
   commitEdit: (text: string, description: string, author: 'User' | 'Agent') => void;
   runExclusiveEdit: ExclusiveEditRunner;
   generateRewrite: (text: string, mode: string, tone?: string) => Promise<string>;
-  generateContinuation: (context: string) => Promise<string>;
+  generateContinuation: (params: { context: string; selection?: string | null }) => Promise<string>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

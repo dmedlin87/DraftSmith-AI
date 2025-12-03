@@ -455,9 +455,12 @@ export const AppBrainProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             );
             return result.result[0] || text;
           },
-          generateContinuation: async (context: string) => {
+          generateContinuation: async ({ context, selection }: { context: string; selection?: string | null }) => {
             try {
-              const { result } = await generateContinuation(context);
+              const { result } = await generateContinuation({
+                context,
+                selection: selection ?? editor.selectionRange?.text,
+              });
               return result;
             } catch (error) {
               console.error('[AppBrainContext] Continuation failed', error);
@@ -485,9 +488,12 @@ export const AppBrainProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           );
           return result.result[0] || text;
         },
-        generateContinuation: async (context: string) => {
+        generateContinuation: async ({ context, selection }: { context: string; selection?: string | null }) => {
           try {
-            const { result } = await generateContinuation(context);
+            const { result } = await generateContinuation({
+              context,
+              selection: selection ?? editor.selectionRange?.text,
+            });
             return result;
           } catch (error) {
             console.error('[AppBrainContext] Continuation failed', error);
