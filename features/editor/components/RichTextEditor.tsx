@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
@@ -7,6 +7,7 @@ import { CommentMark } from '../extensions/CommentMark';
 import type { AnyExtension } from '@tiptap/core';
 import { InlineComment } from '@/types/schema';
 import { useTiptapSync, useDebouncedUpdate, type HighlightItem } from '../hooks/useTiptapSync';
+import { useSettingsStore } from '@/features/settings';
 
 interface RichTextEditorProps {
   content: string;
@@ -22,9 +23,18 @@ interface RichTextEditorProps {
   isZenMode?: boolean;
 }
 
+const getEditorAttributes = (nativeSpellcheckEnabled: boolean) => ({
+  class: 'prose max-w-none focus:outline-none min-h-[60vh] outline-none',
+  style: 'font-family: "Crimson Pro", serif; font-size: 1.125rem; line-height: 2; color: var(--ink-800);',
+  spellcheck: nativeSpellcheckEnabled ? 'true' : 'false',
+  autocorrect: nativeSpellcheckEnabled ? 'on' : 'off',
+  autocomplete: nativeSpellcheckEnabled ? 'on' : 'off',
+  'data-testid': 'tiptap-editor',
+});
+
 /**
  * RichTextEditor - Optimized Tiptap editor component
- * 
+ *
  * Performance optimizations:
  * - useTiptapSync: Bundles ref syncing into single effect
  * - useDebouncedUpdate: Prevents upstream re-renders on every keystroke
@@ -47,6 +57,7 @@ const RichTextEditorComponent: React.FC<RichTextEditorProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const pluginsInstalledRef = useRef(false);
+  const nativeSpellcheckEnabled = useSettingsStore((state) => state.nativeSpellcheckEnabled);
 
   // Use optimized hook for Tiptap sync (replaces 3 separate useEffect hooks)
   const { installPlugins, refreshDecorations } = useTiptapSync({
@@ -58,6 +69,8 @@ const RichTextEditorComponent: React.FC<RichTextEditorProps> = ({
   // Debounced update to prevent re-renders on every keystroke (300ms default)
   const debouncedOnUpdate = useDebouncedUpdate(onUpdate, 300);
 
+  const editorAttributes = useMemo(() => getEditorAttributes(nativeSpellcheckEnabled), [nativeSpellcheckEnabled]);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -65,12 +78,9 @@ const RichTextEditorComponent: React.FC<RichTextEditorProps> = ({
       Markdown.configure({ html: false, transformPastedText: true, transformCopiedText: true }),
       CommentMark as AnyExtension,
     ] as unknown as AnyExtension[],
-    content: content, 
+    content: content,
     editorProps: {
-      attributes: {
-        class: 'prose max-w-none focus:outline-none min-h-[60vh] outline-none',
-        style: 'font-family: "Crimson Pro", serif; font-size: 1.125rem; line-height: 2; color: var(--ink-800);'
-      },
+      attributes: editorAttributes,
     },
     onFocus: () => setIsFocused(true),
     onBlur: () => setIsFocused(false),
@@ -113,6 +123,22 @@ const RichTextEditorComponent: React.FC<RichTextEditorProps> = ({
       }
     },
   });
+
+  useEffect(() => {
+    if (!editor) return;
+
+    editor.setOptions({
+      editorProps: {
+        ...(editor.options.editorProps || {}),
+        attributes: editorAttributes,
+      },
+    });
+
+    const dom = editor.view.dom as HTMLElement;
+    Object.entries(editorAttributes).forEach(([key, value]) => {
+      dom.setAttribute(key, value);
+    });
+  }, [editor, editorAttributes]);
 
   // Sync external content changes (when not focused)
   useEffect(() => {

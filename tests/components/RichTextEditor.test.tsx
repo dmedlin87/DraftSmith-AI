@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { RichTextEditor } from '@/features/editor/components/RichTextEditor';
 import { InlineComment } from '@/types/schema';
+import { useSettingsStore } from '@/features/settings';
 
 // Mock window.scrollBy
 const mockScrollBy = vi.fn();
@@ -120,6 +121,32 @@ describe('RichTextEditor', () => {
       // Text may be split by decorations, verify editor is created
       const editor = await getEditorInstance();
       expect(editor).toBeDefined();
+    });
+
+    it('applies native spellcheck attributes and reacts to preference changes', async () => {
+      render(
+        <RichTextEditor
+          content="Spellcheck content"
+          onUpdate={onUpdate}
+          onSelectionChange={onSelectionChange}
+          setEditorRef={setEditorRef}
+          activeHighlight={null}
+        />
+      );
+
+      const editorSurface = await screen.findByTestId('tiptap-editor');
+
+      expect(editorSurface).toHaveAttribute('spellcheck', 'true');
+      expect(editorSurface).toHaveAttribute('autocorrect', 'on');
+      expect(editorSurface).toHaveAttribute('autocomplete', 'on');
+
+      act(() => {
+        useSettingsStore.getState().setNativeSpellcheckEnabled(false);
+      });
+
+      await waitFor(() => expect(editorSurface).toHaveAttribute('spellcheck', 'false'));
+      expect(editorSurface).toHaveAttribute('autocorrect', 'off');
+      expect(editorSurface).toHaveAttribute('autocomplete', 'off');
     });
   });
 

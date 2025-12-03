@@ -5,6 +5,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { BudgetSelector } from '@/features/settings/components/BudgetSelector';
 import { ExperienceSelector } from '@/features/settings/components/ExperienceSelector';
 import { CritiqueIntensitySelector } from '@/features/settings/components/CritiqueIntensitySelector';
+import { NativeSpellcheckToggle } from '@/features/settings/components/NativeSpellcheckToggle';
 
 if (typeof PointerEvent === 'undefined') {
   class MockPointerEvent extends MouseEvent {
@@ -21,10 +22,12 @@ const mockStore = {
   experienceLevel: 'intermediate',
   autonomyMode: 'copilot',
   critiqueIntensity: 'standard',
+  nativeSpellcheckEnabled: true,
   setBudgetThreshold: vi.fn(),
   setExperienceLevel: vi.fn(),
   setAutonomyMode: vi.fn(),
   setCritiqueIntensity: vi.fn(),
+  setNativeSpellcheckEnabled: vi.fn(),
 };
 
 vi.mock('@/features/settings/store/useSettingsStore', () => ({
@@ -38,11 +41,13 @@ describe('Settings selectors', () => {
       experienceLevel: 'intermediate',
       autonomyMode: 'copilot',
       critiqueIntensity: 'standard',
+      nativeSpellcheckEnabled: true,
     });
     mockStore.setBudgetThreshold.mockClear();
     mockStore.setExperienceLevel.mockClear();
     mockStore.setAutonomyMode.mockClear();
     mockStore.setCritiqueIntensity.mockClear();
+    mockStore.setNativeSpellcheckEnabled.mockClear();
   });
 
   it('updates budget threshold when preset clicked', () => {
@@ -114,5 +119,15 @@ describe('Settings selectors', () => {
 
     const preset = screen.getByText('$5.00');
     expect(preset.className).toContain('magic');
+  });
+
+  it('toggles native spellcheck preference', () => {
+    render(<NativeSpellcheckToggle />);
+
+    const button = screen.getByRole('button', { name: /native spellcheck/i });
+
+    fireEvent.click(button);
+
+    expect(mockStore.setNativeSpellcheckEnabled).toHaveBeenCalledWith(false);
   });
 });

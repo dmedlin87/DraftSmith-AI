@@ -8,6 +8,7 @@ import { VoiceMode } from '@/features/voice';
 import { MagicBar, FindReplaceModal, VisualDiff, RichTextEditor } from '@/features/editor';
 import { findQuoteRange, useEditor, useEngine } from '@/features/shared';
 import { useAppBrainState } from '@/features/core/context/AppBrainContext';
+import { NativeSpellcheckToggle } from '@/features/settings';
 
 /**
  * EditorLayout
@@ -193,7 +194,8 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
               <span className="text-[var(--text-sm)] text-[var(--text-tertiary)] font-medium">
                  {currentText.split(/\s+/).filter(w => w.length > 0).length} words
               </span>
-              <button 
+              <NativeSpellcheckToggle />
+              <button
                 onClick={engineActions.runAnalysis}
                 disabled={engineState.isAnalyzing}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--interactive-accent)] text-[var(--text-inverse)] text-[var(--text-sm)] font-medium hover:bg-[var(--interactive-accent-hover)] disabled:opacity-70 transition-colors shadow-sm"

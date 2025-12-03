@@ -16,6 +16,7 @@ describe('useSettingsStore', () => {
       critiqueIntensity: DEFAULT_CRITIQUE_INTENSITY,
       experienceLevel: DEFAULT_EXPERIENCE,
       autonomyMode: DEFAULT_AUTONOMY,
+      nativeSpellcheckEnabled: true,
     });
   });
 
@@ -25,6 +26,7 @@ describe('useSettingsStore', () => {
     expect(state.critiqueIntensity).toBe(DEFAULT_CRITIQUE_INTENSITY);
     expect(state.experienceLevel).toBe(DEFAULT_EXPERIENCE);
     expect(state.autonomyMode).toBe(DEFAULT_AUTONOMY);
+    expect(state.nativeSpellcheckEnabled).toBe(true);
   });
 
   it('updates critiqueIntensity via setCritiqueIntensity', () => {
@@ -49,5 +51,13 @@ describe('useSettingsStore', () => {
     setAutonomyMode('auto' as AutonomyMode);
 
     expect(useSettingsStore.getState().autonomyMode).toBe('auto');
+  });
+
+  it('toggles native spellcheck preference', () => {
+    const { setNativeSpellcheckEnabled } = useSettingsStore.getState();
+
+    setNativeSpellcheckEnabled(false);
+
+    expect(useSettingsStore.getState().nativeSpellcheckEnabled).toBe(false);
   });
 });

@@ -24,6 +24,10 @@ interface SettingsState {
   // Budget Settings
   budgetThreshold: number;
   setBudgetThreshold: (threshold: number) => void;
+
+  // Editor preferences
+  nativeSpellcheckEnabled: boolean;
+  setNativeSpellcheckEnabled: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -33,6 +37,7 @@ export const useSettingsStore = create<SettingsState>()(
       experienceLevel: DEFAULT_EXPERIENCE,
       autonomyMode: DEFAULT_AUTONOMY,
       budgetThreshold: 1.0,
+      nativeSpellcheckEnabled: true,
 
       setCritiqueIntensity: (intensity) => {
         set({ critiqueIntensity: intensity });
@@ -48,6 +53,10 @@ export const useSettingsStore = create<SettingsState>()(
 
       setBudgetThreshold: (threshold) => {
         set({ budgetThreshold: threshold });
+      },
+
+      setNativeSpellcheckEnabled: (enabled) => {
+        set({ nativeSpellcheckEnabled: enabled });
       },
     }),
     {
