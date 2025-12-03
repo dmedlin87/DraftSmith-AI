@@ -7,7 +7,12 @@
  */
 
 import { WatchedEntity, MemoryNote, AgentGoal } from './types';
-import { searchMemoriesByTags, getMemories, getActiveGoals } from './index';
+import {
+  searchMemoriesByTags,
+  getActiveGoals,
+  getGoalsCached,
+  getMemoriesCached,
+} from './index';
 import { db } from '../db';
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -267,7 +272,8 @@ export async function getImportantReminders(
   const now = Date.now();
   
   // Get high-importance unresolved issues from the latest project memories
-  const projectMemories = await getMemories({ scope: 'project', projectId, limit: 100 });
+  // Use the cache to avoid repeated Dexie lookups during rapid polling
+  const projectMemories = await getMemoriesCached(projectId, { limit: 100 });
   const issues = projectMemories
     .filter(m => m.type === 'issue' && m.importance >= 0.7)
     .slice(0, 5);
@@ -289,7 +295,7 @@ export async function getImportantReminders(
   }
   
   // Get stalled goals (active but low progress for a while) from the latest records
-  const goals = await getActiveGoals(projectId);
+  const goals = await getGoalsCached(projectId, { forceRefresh: false });
   const oneDayAgo = now - (24 * 60 * 60 * 1000);
   
   for (const goal of goals) {
