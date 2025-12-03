@@ -99,6 +99,21 @@ export const useEditorBranching = (
     );
   }, []);
 
+  useEffect(() => {
+    if (activeBranchId === null) {
+      setMainContent(prev => (prev === currentText ? prev : currentText));
+      return;
+    }
+
+    setBranches(prev =>
+      prev.map(branch =>
+        branch.id === activeBranchId && branch.content !== currentText
+          ? { ...branch, content: currentText }
+          : branch,
+      ),
+    );
+  }, [activeBranchId, currentText]);
+
   const isOnMain = !activeBranchId;
 
   return {
