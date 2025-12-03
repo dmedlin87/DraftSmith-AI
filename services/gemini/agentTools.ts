@@ -102,26 +102,26 @@ export const EDITING_TOOLS: FunctionDeclaration[] = [
   {
     name: 'update_manuscript',
     description: `Replace specific text in the ACTIVE CHAPTER with new content. 
-IMPORTANT: The search_text must match exactly what exists in the document.
+IMPORTANT: The searchText must match exactly what exists in the document.
 Use this for: rewrites, fixes, expansions, or any text modification.
 The change will be shown to the user for review before applying.`,
     parameters: {
       type: Type.OBJECT,
       properties: {
-        search_text: { 
-          type: Type.STRING, 
-          description: 'The exact text in the manuscript to be replaced. Must match precisely.' 
+        searchText: {
+          type: Type.STRING,
+          description: 'The exact text in the manuscript to be replaced. Must match precisely.'
         },
-        replacement_text: { 
-          type: Type.STRING, 
-          description: 'The new text to insert in place of search_text.' 
+        replacementText: {
+          type: Type.STRING,
+          description: 'The new text to insert in place of searchText.'
         },
         description: { 
           type: Type.STRING, 
           description: 'Brief description of what this change accomplishes (e.g., "Clarified the motivation")' 
         }
       },
-      required: ['search_text', 'replacement_text', 'description']
+        required: ['searchText', 'replacementText', 'description']
     }
   },
   {
@@ -130,16 +130,16 @@ The change will be shown to the user for review before applying.`,
     parameters: {
       type: Type.OBJECT,
       properties: {
-        text_to_add: { 
-          type: Type.STRING, 
-          description: 'The text to append to the chapter.' 
+        text: {
+          type: Type.STRING,
+          description: 'The text to append to the chapter.'
         },
         description: { 
           type: Type.STRING, 
           description: 'Brief description of what was added.' 
         }
       },
-      required: ['text_to_add', 'description']
+        required: ['text', 'description']
     }
   },
   {
@@ -218,12 +218,12 @@ Focuses on specific aspects of the writing.`,
     parameters: {
       type: Type.OBJECT,
       properties: {
-        issue_index: { 
-          type: Type.NUMBER, 
-          description: 'Index (0-based) of the plot issue to explain' 
+        issueIndex: {
+          type: Type.NUMBER,
+          description: 'Index (0-based) of the plot issue to explain'
         }
       },
-      required: ['issue_index']
+      required: ['issueIndex']
     }
   },
   {
@@ -306,6 +306,28 @@ export const UI_CONTROL_TOOLS: FunctionDeclaration[] = [
           type: Type.STRING, 
           enum: ['warning', 'suggestion', 'info', 'error'],
           description: 'Visual style of the highlight' 
+        }
+      },
+      required: ['start', 'end']
+    }
+  },
+  {
+    name: 'set_selection',
+    description: 'Set the editor selection to a specific range to prime edits or critiques.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        start: {
+          type: Type.NUMBER,
+          description: 'Start position (character offset) of the selection'
+        },
+        end: {
+          type: Type.NUMBER,
+          description: 'End position (character offset) of the selection'
+        },
+        text: {
+          type: Type.STRING,
+          description: 'Optional text preview to confirm the correct span'
         }
       },
       required: ['start', 'end']
@@ -619,9 +641,9 @@ Shows multiple variations for the user to choose from.`,
           enum: ['clarify', 'expand', 'condense', 'vary', 'intensify', 'tone_shift'],
           description: 'How to transform the text' 
         },
-        target_tone: { 
-          type: Type.STRING, 
-          description: 'For tone_shift mode: the target emotional tone (e.g., "somber", "hopeful")' 
+        targetTone: {
+          type: Type.STRING,
+          description: 'For tone_shift mode: the target emotional tone (e.g., "somber", "hopeful")'
         }
       },
       required: ['mode']
@@ -674,21 +696,21 @@ Shows multiple variations for the user to choose from.`,
     parameters: {
       type: Type.OBJECT,
       properties: {
-        from_state: { 
-          type: Type.STRING, 
-          description: 'Starting emotional/narrative state' 
+        fromState: {
+          type: Type.STRING,
+          description: 'Starting emotional/narrative state'
         },
-        to_state: { 
-          type: Type.STRING, 
-          description: 'Ending emotional/narrative state' 
+        toState: {
+          type: Type.STRING,
+          description: 'Ending emotional/narrative state'
         },
-        beat_type: { 
-          type: Type.STRING, 
+        beatType: {
+          type: Type.STRING,
           enum: ['action', 'reaction', 'transition', 'revelation'],
-          description: 'Type of beat to generate' 
+          description: 'Type of beat to generate'
         }
       },
-      required: ['beat_type']
+      required: ['beatType']
     }
   }
 ];
