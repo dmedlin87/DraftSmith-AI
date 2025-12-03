@@ -48,6 +48,38 @@ vi.mock('@google/genai', () => {
   return { GoogleGenAI, Type, Modality };
 });
 
+// Provide minimal Web Audio / Speech API shims for environments without them
+if (!(globalThis as any).AudioContext) {
+  class StubAudioContext {
+    sampleRate: number;
+    constructor(options?: { sampleRate?: number }) {
+      this.sampleRate = options?.sampleRate ?? 44100;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    decodeAudioData(_data: ArrayBuffer): Promise<AudioBuffer> {
+      return Promise.resolve({} as AudioBuffer);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    close() {}
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    createBufferSource() { return { connect: vi.fn(), start: vi.fn(), stop: vi.fn() }; }
+    destination = {} as AudioDestinationNode;
+  }
+  (globalThis as any).AudioContext = StubAudioContext;
+  (globalThis as any).webkitAudioContext = StubAudioContext;
+}
+
+if (!(globalThis as any).speechSynthesis) {
+  (globalThis as any).speechSynthesis = {
+    speak: vi.fn(),
+    cancel: vi.fn(),
+    pause: vi.fn(),
+    resume: vi.fn(),
+    getVoices: vi.fn(() => []),
+    onvoiceschanged: null,
+  };
+}
+
 // Global Dexie/IndexedDB mock: replace @/services/db with an in-memory implementation
 vi.mock('@/services/db', () => {
   type WithId = { id: string };
@@ -56,6 +88,10 @@ vi.mock('@/services/db', () => {
     const data = new Map<string, T>();
 
     return {
+      async put(item: T) {
+        data.set(item.id, item);
+        return item.id;
+      },
       async add(item: T) {
         data.set(item.id, item);
         return item.id;

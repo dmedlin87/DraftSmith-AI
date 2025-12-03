@@ -140,10 +140,13 @@ const detectArcPhases = (
   
   // Falling action: After climax
   const fallingStart = climaxEnd + 1;
-  const fallingEnd = Math.min(totalScenes - 1, Math.floor(totalScenes * 0.95));
-  
-  // Resolution: Final scenes
-  const resolutionStart = fallingEnd + 1;
+
+  // Resolution: Reserve the final stretch (~15%) for resolution so we always
+  // surface a closing phase when there are enough scenes.
+  const resolutionStart = totalScenes > 1
+    ? Math.min(totalScenes - 1, Math.max(fallingStart + 1, Math.floor(totalScenes * 0.85)))
+    : totalScenes - 1;
+  const fallingEnd = resolutionStart - 1;
   
   // Build arc objects
   const buildArc = (phase: ArcPhase, start: number, end: number): NarrativeArc | null => {
@@ -244,8 +247,11 @@ const calculatePacingScore = (
   climaxIndex: number
 ): number => {
   if (tensionCurve.length < 3) return 0.5;
-  
+
   let score = 0.5;
+
+  const averageTension = tensionCurve.reduce((a, b) => a + b, 0) / tensionCurve.length;
+  const variance = tensionCurve.reduce((sum, value) => sum + Math.pow(value - averageTension, 2), 0) / tensionCurve.length;
   
   // Good pacing has gradual rise to climax
   const preClimax = tensionCurve.slice(0, climaxIndex + 1);
@@ -273,7 +279,12 @@ const calculatePacingScore = (
   if (climaxPosition >= 0.5 && climaxPosition <= 0.85) {
     score += 0.1;
   }
-  
+
+  // Flat or low-variance curves indicate poor pacing
+  if (variance < 0.005) {
+    score -= 0.2;
+  }
+
   return Math.min(1, Math.max(0, score));
 };
 
@@ -288,6 +299,10 @@ const generateSuggestions = (
   pacingScore: number
 ): string[] => {
   const suggestions: string[] = [];
+
+  if (tensionCurve.length === 0) {
+    return suggestions;
+  }
   
   const totalScenes = tensionCurve.length;
   const climaxPosition = climaxIndex / totalScenes;
@@ -307,7 +322,7 @@ const generateSuggestions = (
   // Check climax timing
   if (climaxPosition < 0.4) {
     suggestions.push('The climax occurs quite early. The story may feel front-loaded or anti-climactic.');
-  } else if (climaxPosition > 0.95) {
+  } else if (climaxPosition > 0.85) {
     suggestions.push('The climax is very close to the end. Consider allowing more space for falling action.');
   }
   
@@ -322,7 +337,7 @@ const generateSuggestions = (
   }
   
   // Overall pacing
-  if (pacingScore < 0.4) {
+  if (pacingScore < 0.6) {
     suggestions.push('The overall pacing may feel uneven. Consider smoothing out tension transitions.');
   }
   
