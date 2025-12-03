@@ -7,6 +7,7 @@ const {
   mockSendMessage,
   mockUseAppBrain,
   mockExecuteAgentToolCall,
+  brainValue,
 } = vi.hoisted(() => {
   const mockSendMessage = vi.fn();
   const mockCreateAgentSession = vi.fn(() => ({
@@ -81,6 +82,7 @@ const {
     mockSendMessage,
     mockUseAppBrain,
     mockExecuteAgentToolCall,
+    brainValue,
   };
 });
 
@@ -271,6 +273,31 @@ describe('useAgentOrchestrator', () => {
 
     // One session for initial init, one for persona switch
     expect(mockCreateAgentSession).toHaveBeenCalledTimes(2);
+  });
+
+  it('reinitializes the agent session when context changes with autoReinit enabled', async () => {
+    mockSendMessage.mockResolvedValue({ text: '' });
+
+    const { result, rerender } = renderHook(() => useAgentOrchestrator());
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+
+    expect(mockCreateAgentSession).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      brainValue.state.analysis = {
+        ...brainValue.state.analysis,
+        result: 'New analysis ready',
+      } as any;
+    });
+
+    rerender();
+
+    await waitFor(() => {
+      expect(mockCreateAgentSession).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('exposes voice mode flag when initialized in voice mode', async () => {

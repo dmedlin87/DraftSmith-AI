@@ -97,6 +97,12 @@ export function useAgentOrchestrator(
   const abortControllerRef = useRef<AbortController | null>(null);
   const latestStateRef = useRef(brain.state);
   const orchestratorEventLogRef = useRef<AppEvent[]>(eventBus.getChangeLog(10));
+  const hasSeenContextChangeRef = useRef(false);
+
+  const abort = useCallback(() => {
+    abortControllerRef.current?.abort();
+    dispatch({ type: 'ABORT' });
+  }, []);
   
   // Settings
   const critiqueIntensity = useSettingsStore(s => s.critiqueIntensity);
@@ -171,7 +177,31 @@ export function useAgentOrchestrator(
     return () => {
       abortControllerRef.current?.abort();
     };
-  }, [initSession, manuscriptProjectId]);
+    // We deliberately initialize only once. Context-based reinitialization is
+    // handled by a dedicated effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!autoReinit) return;
+
+    if (!hasSeenContextChangeRef.current) {
+      hasSeenContextChangeRef.current = true;
+      return;
+    }
+
+    abort();
+    chatRef.current = null;
+    initSession();
+  }, [
+    autoReinit,
+    manuscriptProjectId,
+    currentPersona,
+    brain.state.lore,
+    brain.state.analysis.result,
+    initSession,
+    abort,
+  ]);
 
   // Persona change announcement (session reinit is handled by the initSession effect)
   useEffect(() => {
@@ -332,11 +362,6 @@ ${messageText}
   // ─────────────────────────────────────────────────────────────────────────
   // CONTROL METHODS
   // ─────────────────────────────────────────────────────────────────────────
-
-  const abort = useCallback(() => {
-    abortControllerRef.current?.abort();
-    dispatch({ type: 'ABORT' });
-  }, []);
 
   const reset = useCallback(() => {
     abort();
