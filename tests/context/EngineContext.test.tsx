@@ -61,7 +61,9 @@ beforeEach(() => {
     magicHelpType: null,
     isMagicLoading: false,
     magicError: null,
-    pendingDiff: null
+    pendingDiff: null,
+    grammarSuggestions: [],
+    grammarHighlights: []
   };
 
   mockActions = {
@@ -72,6 +74,10 @@ beforeEach(() => {
     handleHelp: vi.fn(),
     applyVariation: vi.fn(),
     closeMagicBar: vi.fn(),
+    handleGrammarCheck: vi.fn(),
+    applyGrammarSuggestion: vi.fn(),
+    applyAllGrammarSuggestions: vi.fn(),
+    dismissGrammarSuggestion: vi.fn(),
     handleAgentAction: vi.fn(),
     acceptDiff: vi.fn(),
     rejectDiff: vi.fn()

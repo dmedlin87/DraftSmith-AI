@@ -174,6 +174,16 @@ export interface HistoryItem {
   newContent: string;
 }
 
+export interface GrammarSuggestion {
+  id: string;
+  start: number;
+  end: number;
+  replacement: string;
+  message: string;
+  severity?: 'grammar' | 'style';
+  originalText?: string;
+}
+
 export interface HighlightRange {
   start: number;
   end: number;

@@ -29,6 +29,11 @@ describe('MagicBar', () => {
     onApply: vi.fn(),
     onClose: vi.fn(),
     activeMode: null as string | null,
+    grammarSuggestions: [],
+    onGrammarCheck: vi.fn(),
+    onApplyGrammar: vi.fn(),
+    onApplyAllGrammar: vi.fn(),
+    onDismissGrammar: vi.fn(),
   };
 
   it('shows loading state with active mode', () => {
@@ -40,6 +45,7 @@ describe('MagicBar', () => {
         helpResult={undefined}
         helpType={null}
         activeMode="Dialogue Doctor"
+        grammarSuggestions={[]}
       />
     );
 
@@ -60,6 +66,7 @@ describe('MagicBar', () => {
         helpType={null}
         onRewrite={onRewrite}
         onHelp={onHelp}
+        grammarSuggestions={[]}
       />
     );
 
@@ -88,6 +95,7 @@ describe('MagicBar', () => {
         helpResult={undefined}
         helpType={null}
         onApply={onApply}
+        grammarSuggestions={[]}
       />
     );
 
@@ -110,10 +118,45 @@ describe('MagicBar', () => {
         helpResult={'brave, bold'}
         helpType={'Thesaurus'}
         onApply={onApply}
+        grammarSuggestions={[]}
       />
     );
 
     fireEvent.click(screen.getByText('brave'));
     expect(onApply).toHaveBeenCalledWith('brave');
+  });
+
+  it('renders grammar suggestions and wires apply/dismiss', () => {
+    const onApplyGrammar = vi.fn();
+    const onDismissGrammar = vi.fn();
+
+    render(
+      <MagicBar
+        {...baseProps}
+        isLoading={false}
+        variations={[]}
+        grammarSuggestions={[
+          {
+            id: 'g1',
+            start: 0,
+            end: 4,
+            replacement: 'fixed',
+            message: 'Fix spelling',
+            severity: 'grammar',
+            originalText: 'teh',
+          },
+        ]}
+        helpResult={undefined}
+        helpType={null}
+        onApplyGrammar={onApplyGrammar}
+        onDismissGrammar={onDismissGrammar}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Apply fix'));
+    expect(onApplyGrammar).toHaveBeenCalledWith('g1');
+
+    fireEvent.click(screen.getByText('Dismiss'));
+    expect(onDismissGrammar).toHaveBeenCalledWith('g1');
   });
 });

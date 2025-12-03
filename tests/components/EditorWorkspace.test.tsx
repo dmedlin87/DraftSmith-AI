@@ -148,26 +148,39 @@ describe('EditorWorkspace', () => {
       toggleZenMode: mockToggleZenMode,
     });
 
+    const defaultEngineState = {
+      isAnalyzing: false,
+      isMagicLoading: false,
+      magicVariations: [],
+      magicHelpResult: null,
+      magicHelpType: null,
+      activeMagicMode: null,
+      pendingDiff: null,
+      grammarSuggestions: [],
+      grammarHighlights: [],
+    };
+
+    const defaultEngineActions = {
+      runAnalysis: mockRunAnalysis,
+      handleRewrite: vi.fn(),
+      handleHelp: vi.fn(),
+      applyVariation: vi.fn(),
+      closeMagicBar: vi.fn(),
+      handleGrammarCheck: vi.fn(),
+      applyGrammarSuggestion: vi.fn(),
+      applyAllGrammarSuggestions: vi.fn(),
+      dismissGrammarSuggestion: vi.fn(),
+      acceptDiff: vi.fn(),
+      rejectDiff: vi.fn(),
+    };
+
+    const mergedState = { ...defaultEngineState, ...(overridesEngine.state || {}) };
+    const mergedActions = { ...defaultEngineActions, ...(overridesEngine.actions || {}) };
+
     mockUseEngine.mockReturnValue({
-      state: {
-        isAnalyzing: false,
-        isMagicLoading: false,
-        magicVariations: [],
-        magicHelpResult: null,
-        magicHelpType: null,
-        activeMagicMode: null,
-        pendingDiff: null,
-      },
-      actions: {
-        runAnalysis: mockRunAnalysis,
-        handleRewrite: vi.fn(),
-        handleHelp: vi.fn(),
-        applyVariation: vi.fn(),
-        closeMagicBar: vi.fn(),
-        acceptDiff: vi.fn(),
-        rejectDiff: vi.fn(),
-      },
       ...overridesEngine,
+      state: mergedState,
+      actions: mergedActions,
     });
   };
 
@@ -257,22 +270,30 @@ describe('EditorWorkspace', () => {
     const mockAccept = vi.fn();
     const mockReject = vi.fn();
 
+    const engineState = {
+      isAnalyzing: false,
+      isMagicLoading: false,
+      magicVariations: [],
+      magicHelpResult: null,
+      magicHelpType: null,
+      activeMagicMode: null,
+      pendingDiff: { original: 'old', modified: 'new' },
+      grammarSuggestions: [],
+      grammarHighlights: [],
+    };
+
     mockUseEngine.mockReturnValue({
-      state: {
-        isAnalyzing: false,
-        isMagicLoading: false,
-        magicVariations: [],
-        magicHelpResult: null,
-        magicHelpType: null,
-        activeMagicMode: null,
-        pendingDiff: { original: 'old', modified: 'new' },
-      },
+      state: engineState,
       actions: {
         runAnalysis: mockRunAnalysis,
         handleRewrite: vi.fn(),
         handleHelp: vi.fn(),
         applyVariation: vi.fn(),
         closeMagicBar: vi.fn(),
+        handleGrammarCheck: vi.fn(),
+        applyGrammarSuggestion: vi.fn(),
+        applyAllGrammarSuggestions: vi.fn(),
+        dismissGrammarSuggestion: vi.fn(),
         acceptDiff: mockAccept,
         rejectDiff: mockReject,
       },

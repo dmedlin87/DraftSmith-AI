@@ -118,8 +118,16 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
             if (range) highlights.push({ ...range, color: 'var(--magic-500)', title: issue.issue });
             });
         }
+        if (engineState.grammarHighlights.length > 0) {
+          highlights.push(...engineState.grammarHighlights.map(h => ({
+            start: h.start,
+            end: h.end,
+            color: h.color,
+            title: h.title || 'Grammar',
+          })));
+        }
         return highlights;
-    }, [activeChapter, currentText]);
+    }, [activeChapter, currentText, engineState.grammarHighlights]);
 
   return (
     <div className="flex w-full h-full bg-[var(--surface-tertiary)] text-[var(--text-primary)] font-sans">
@@ -227,15 +235,20 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
               />
 
               {selectionRange && selectionPos && (
-                <MagicBar 
-                  isLoading={engineState.isMagicLoading} 
-                  variations={engineState.magicVariations} 
+                <MagicBar
+                  isLoading={engineState.isMagicLoading}
+                  variations={engineState.magicVariations}
                   helpResult={engineState.magicHelpResult}
                   helpType={engineState.magicHelpType}
                   activeMode={engineState.activeMagicMode}
+                  grammarSuggestions={engineState.grammarSuggestions}
                   onRewrite={engineActions.handleRewrite}
                   onHelp={engineActions.handleHelp}
                   onApply={engineActions.applyVariation}
+                  onGrammarCheck={engineActions.handleGrammarCheck}
+                  onApplyGrammar={engineActions.applyGrammarSuggestion}
+                  onApplyAllGrammar={engineActions.applyAllGrammarSuggestions}
+                  onDismissGrammar={engineActions.dismissGrammarSuggestion}
                   onClose={engineActions.closeMagicBar}
                   position={selectionPos}
                 />

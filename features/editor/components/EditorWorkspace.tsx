@@ -272,8 +272,17 @@ export const EditorWorkspace: React.FC = () => {
           });
       });
     }
+
+    if (engineState.grammarHighlights.length > 0) {
+      highlights.push(...engineState.grammarHighlights.map(h => ({
+        start: h.start,
+        end: h.end,
+        color: h.color,
+        title: h.title || 'Grammar',
+      })));
+    }
     return highlights;
-  }, [hud.prioritizedIssues, activeChapter, currentText]);
+  }, [hud.prioritizedIssues, activeChapter, currentText, engineState.grammarHighlights]);
 
   const [activeComment, setActiveComment] = useState<
     (InlineComment & { position: { top: number; left: number } }) | null
@@ -376,9 +385,14 @@ export const EditorWorkspace: React.FC = () => {
               helpResult={engineState.magicHelpResult || undefined}
               helpType={engineState.magicHelpType}
               activeMode={engineState.activeMagicMode}
+              grammarSuggestions={engineState.grammarSuggestions}
               onRewrite={engineActions.handleRewrite}
               onHelp={engineActions.handleHelp}
               onApply={engineActions.applyVariation}
+              onGrammarCheck={engineActions.handleGrammarCheck}
+              onApplyGrammar={engineActions.applyGrammarSuggestion}
+              onApplyAllGrammar={engineActions.applyAllGrammarSuggestions}
+              onDismissGrammar={engineActions.dismissGrammarSuggestion}
               onClose={engineActions.closeMagicBar}
               position={selectionPos}
             />

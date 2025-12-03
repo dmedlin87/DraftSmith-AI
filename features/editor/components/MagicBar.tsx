@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useViewportCollision } from '@/features/shared';
+import { GrammarSuggestion } from '@/types';
 
 interface MagicBarProps {
   isLoading: boolean;
@@ -7,9 +8,14 @@ interface MagicBarProps {
   helpResult?: string;
   helpType?: 'Explain' | 'Thesaurus' | null;
   activeMode?: string | null;
+  grammarSuggestions: GrammarSuggestion[];
   onRewrite: (mode: string, tone?: string) => void;
   onHelp: (type: 'Explain' | 'Thesaurus') => void;
   onApply: (text: string) => void;
+  onGrammarCheck: () => void;
+  onApplyGrammar: (id?: string | null) => void;
+  onApplyAllGrammar: () => void;
+  onDismissGrammar: (id: string) => void;
   onClose: () => void;
   position: { top: number; left: number };
 }
@@ -73,24 +79,29 @@ const SparkleField = () => {
 };
 
 // --- Main Component ---
-const MagicBarComponent: React.FC<MagicBarProps> = ({ 
-  isLoading, 
-  variations, 
+const MagicBarComponent: React.FC<MagicBarProps> = ({
+  isLoading,
+  variations,
   helpResult,
   helpType,
   activeMode,
-  onRewrite, 
-  onHelp, 
-  onApply, 
-  onClose, 
-  position 
+  grammarSuggestions,
+  onRewrite,
+  onHelp,
+  onApply,
+  onGrammarCheck,
+  onApplyGrammar,
+  onApplyAllGrammar,
+  onDismissGrammar,
+  onClose,
+  position
 }) => {
-  const [activeView, setActiveView] = useState<'menu' | 'tone' | 'variations' | 'help'>('menu');
+  const [activeView, setActiveView] = useState<'menu' | 'tone' | 'variations' | 'help' | 'grammar'>('menu');
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   // Determine element dimensions based on current view for collision detection
   const elementDimensions = useMemo(() => {
-    if (activeView === 'variations' || activeView === 'help') {
+    if (activeView === 'variations' || activeView === 'help' || activeView === 'grammar') {
       return { elementWidth: 480, elementHeight: 400 };
     }
     // Menu/tone view is smaller
@@ -111,10 +122,11 @@ const MagicBarComponent: React.FC<MagicBarProps> = ({
   useEffect(() => {
     if (isLoading) return; // Stay on whatever view if loading, typically loading view renders separately
     
-    if (variations.length > 0) setActiveView('variations');
+    if (grammarSuggestions.length > 0) setActiveView('grammar');
+    else if (variations.length > 0) setActiveView('variations');
     else if (helpResult) setActiveView('help');
     else if (activeView !== 'tone') setActiveView('menu');
-  }, [variations, helpResult, isLoading]);
+  }, [variations, helpResult, isLoading, grammarSuggestions.length, activeView]);
 
   const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
@@ -176,6 +188,9 @@ const MagicBarComponent: React.FC<MagicBarProps> = ({
                   <button onClick={() => onHelp('Thesaurus')} className={menuButtonClass} title="Find Synonyms">
                     <Icons.Book /> <span className="hidden sm:inline">Synonyms</span>
                   </button>
+                  <button onClick={onGrammarCheck} className={menuButtonClass} title="Flag grammar issues">
+                    <Icons.Check /> <span className="hidden sm:inline">Fix grammar</span>
+                  </button>
               </div>
 
               <div className="w-px h-6 bg-[var(--border-primary)] mx-1"></div>
@@ -228,9 +243,9 @@ const MagicBarComponent: React.FC<MagicBarProps> = ({
       )}
 
       {/* 2. Variations & Help - Glassmorphism */}
-      {(activeView === 'variations' || activeView === 'help') && (
+      {(activeView === 'variations' || activeView === 'help' || activeView === 'grammar') && (
         <div className="glass-strong rounded-xl shadow-xl w-[480px] max-w-[90vw] overflow-hidden flex flex-col animate-slide-up origin-bottom">
-          
+
           {/* Header */}
           <div className="px-4 py-3 border-b border-[var(--glass-border)] flex justify-between items-center">
             <div className="flex items-center gap-2 text-[var(--text-primary)] font-serif font-bold text-base">
@@ -244,6 +259,14 @@ const MagicBarComponent: React.FC<MagicBarProps> = ({
                         {activeMode}
                       </span>
                     )}
+                  </div>
+                </>
+              ) : activeView === 'grammar' ? (
+                <>
+                  <span className="text-[var(--interactive-accent)]"><Icons.Check /></span>
+                  <div className="flex flex-col leading-tight">
+                    <span className="font-bold">Grammar & Style</span>
+                    <span className="text-[12px] text-[var(--text-tertiary)]">Apply quick fixes to your selection</span>
                   </div>
                 </>
               ) : (
@@ -284,6 +307,57 @@ const MagicBarComponent: React.FC<MagicBarProps> = ({
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : activeView === 'grammar' ? (
+              <div className="space-y-3 animate-fade-in">
+                {grammarSuggestions.length === 0 ? (
+                  <p className="text-[var(--text-secondary)] text-sm">No grammar issues detected in this selection.</p>
+                ) : (
+                  <>
+                    {grammarSuggestions.map((suggestion, index) => (
+                      <div
+                        key={suggestion.id}
+                        className="p-4 bg-[var(--surface-elevated)] border border-[var(--border-primary)] rounded-lg shadow-sm animate-slide-up"
+                        style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'both' }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-semibold text-[var(--text-primary)]">{suggestion.message}</p>
+                            <p className="text-[var(--text-secondary)] text-sm">
+                              <span className="line-through decoration-error-500 mr-1">{suggestion.originalText}</span>
+                              <span className="text-[var(--success-600)]">→ {suggestion.replacement}</span>
+                            </p>
+                          </div>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--interactive-bg-active)] text-[var(--interactive-accent)] font-bold uppercase tracking-wide">
+                            {suggestion.severity === 'style' ? 'Style' : 'Grammar'}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 mt-3 flex-wrap">
+                          <button
+                            onClick={() => onApplyGrammar(suggestion.id)}
+                            className="px-3 py-1.5 rounded-lg bg-[var(--interactive-accent)] text-[var(--text-inverse)] text-sm font-medium hover:bg-[var(--interactive-accent-strong)] transition-colors"
+                          >
+                            Apply fix
+                          </button>
+                          <button
+                            onClick={() => onDismissGrammar(suggestion.id)}
+                            className="px-3 py-1.5 rounded-lg border border-[var(--border-primary)] text-[var(--text-secondary)] text-sm hover:bg-[var(--interactive-bg-hover)]"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {grammarSuggestions.length > 1 && (
+                      <button
+                        onClick={onApplyAllGrammar}
+                        className="w-full px-3 py-2 rounded-lg bg-[var(--ink-900)] text-[var(--parchment-50)] text-sm font-semibold hover:bg-[var(--ink-800)] transition-colors"
+                      >
+                        Apply all fixes
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             ) : (
               <div className="animate-fade-in">

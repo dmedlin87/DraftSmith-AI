@@ -74,6 +74,36 @@ describe('EditorLayout', () => {
   const mockRunAnalysis = vi.fn();
   const mockClearSelection = vi.fn();
 
+  const baseEngineState = () => ({
+    state: {
+      isAnalyzing: false,
+      isMagicLoading: false,
+      magicVariations: [],
+      magicHelpResult: null,
+      magicHelpType: null,
+      activeMagicMode: null,
+      pendingDiff: null,
+      analysisWarning: null,
+      grammarSuggestions: [],
+      grammarHighlights: [],
+    },
+    actions: {
+      runAnalysis: mockRunAnalysis,
+      runSelectionAnalysis: vi.fn(),
+      handleRewrite: vi.fn(),
+      handleHelp: vi.fn(),
+      applyVariation: vi.fn(),
+      closeMagicBar: vi.fn(),
+      handleGrammarCheck: vi.fn(),
+      applyGrammarSuggestion: vi.fn(),
+      applyAllGrammarSuggestions: vi.fn(),
+      dismissGrammarSuggestion: vi.fn(),
+      acceptDiff: vi.fn(),
+      rejectDiff: vi.fn(),
+      handleAgentAction: vi.fn(),
+    },
+  });
+
   const defaultProps = {
     activeTab: SidebarTab.ANALYSIS,
     onTabChange: mockOnTabChange,
@@ -107,29 +137,7 @@ describe('EditorLayout', () => {
       handleNavigateToIssue: vi.fn(),
     });
 
-    mockUseEngine.mockReturnValue({
-      state: {
-        isAnalyzing: false,
-        isMagicLoading: false,
-        magicVariations: [],
-        magicHelpResult: null,
-        magicHelpType: null,
-        activeMagicMode: null,
-        pendingDiff: null,
-        analysisWarning: null,
-      },
-      actions: {
-        runAnalysis: mockRunAnalysis,
-        runSelectionAnalysis: vi.fn(),
-        handleRewrite: vi.fn(),
-        handleHelp: vi.fn(),
-        applyVariation: vi.fn(),
-        closeMagicBar: vi.fn(),
-        acceptDiff: vi.fn(),
-        rejectDiff: vi.fn(),
-        handleAgentAction: vi.fn(),
-      },
-    });
+    mockUseEngine.mockReturnValue(baseEngineState());
   };
 
   beforeEach(() => {
@@ -180,8 +188,9 @@ describe('EditorLayout', () => {
 
   it('shows loading state when analyzing', () => {
     mockUseEngine.mockReturnValue({
-      state: { isAnalyzing: true, pendingDiff: null },
-      actions: { runAnalysis: mockRunAnalysis, runSelectionAnalysis: vi.fn() },
+      ...baseEngineState(),
+      state: { ...baseEngineState().state, isAnalyzing: true },
+      actions: { ...baseEngineState().actions, runAnalysis: mockRunAnalysis, runSelectionAnalysis: vi.fn() },
     });
     
     render(<EditorLayout {...defaultProps} />);
@@ -239,11 +248,14 @@ describe('EditorLayout', () => {
 
   it('shows pending diff modal when diff is available', () => {
     mockUseEngine.mockReturnValue({
+      ...baseEngineState(),
       state: {
+        ...baseEngineState().state,
         isAnalyzing: false,
         pendingDiff: { original: 'old text', modified: 'new text' },
       },
       actions: {
+        ...baseEngineState().actions,
         runAnalysis: vi.fn(),
         acceptDiff: vi.fn(),
         rejectDiff: vi.fn(),

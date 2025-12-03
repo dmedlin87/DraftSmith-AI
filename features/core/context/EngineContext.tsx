@@ -27,6 +27,8 @@ export interface EngineState {
   isMagicLoading: boolean;
   magicError?: string | null;
   pendingDiff: PendingDiff | null;
+  grammarSuggestions: import('@/types').GrammarSuggestion[];
+  grammarHighlights: import('@/features/editor/hooks/useTiptapSync').HighlightItem[];
 }
 
 export interface EngineActions {
@@ -37,6 +39,10 @@ export interface EngineActions {
   handleHelp: (type: 'Explain' | 'Thesaurus') => void;
   applyVariation: (text: string) => void;
   closeMagicBar: () => void;
+  handleGrammarCheck: () => void;
+  applyGrammarSuggestion: (id?: string | null) => void;
+  applyAllGrammarSuggestions: () => void;
+  dismissGrammarSuggestion: (id: string) => void;
   handleAgentAction: (action: string, params: any) => Promise<string>;
   acceptDiff: () => void;
   rejectDiff: () => void;
