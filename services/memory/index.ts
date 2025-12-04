@@ -52,6 +52,9 @@ export async function createMemory(
  * 
  * Supports filtering by scope, projectId, type, and tags.
  * Results are sorted by importance (desc) then createdAt (desc).
+ * 
+ * Optimization: Uses Dexie's Collection.filter() before toArray() to reduce
+ * memory usage by filtering items as they are streamed from the DB.
  */
 export async function getMemories(
   params: ListMemoryNotesParams = {}
@@ -72,25 +75,24 @@ export async function getMemories(
     collection = db.memories.where('projectId').equals(projectId);
   }
 
-  // Fetch results and apply remaining filters in-memory
-  let results = await collection.toArray();
-
-  // Filter by type
+  // Apply filters via Collection.filter() BEFORE toArray()
+  // This reduces memory usage by filtering during streaming rather than after
   if (type) {
-    results = results.filter(note => note.type === type);
+    collection = collection.filter(note => note.type === type);
   }
 
-  // Filter by minimum importance
   if (minImportance !== undefined) {
-    results = results.filter(note => note.importance >= minImportance);
+    collection = collection.filter(note => note.importance >= minImportance);
   }
 
-  // Filter by tags (note must have ALL specified tags)
   if (topicTags && topicTags.length > 0) {
-    results = results.filter(note =>
+    collection = collection.filter(note =>
       topicTags.every(tag => note.topicTags.includes(tag))
     );
   }
+
+  // Now fetch the filtered results
+  let results = await collection.toArray();
 
   // Sort by importance (desc) then createdAt (desc)
   results.sort((a, b) => {
