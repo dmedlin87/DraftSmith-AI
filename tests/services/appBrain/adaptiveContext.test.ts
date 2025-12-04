@@ -208,6 +208,169 @@ describe('adaptiveContext', () => {
         'other-1',
       ]);
     });
+
+    it('refreshes stale bedside note using latest analysis summary and goals', async () => {
+      const staleTimestamp = Date.now() - 1000 * 60 * 60 * 24;
+      vi
+        .spyOn(memoryService, 'getMemories')
+        .mockResolvedValueOnce([
+          {
+            id: 'bedside-1',
+            scope: 'project',
+            projectId: 'p1',
+            type: 'plan',
+            text: 'Old bedside note',
+            topicTags: ['meta:bedside-note', 'planner:global'],
+            importance: 0.9,
+            createdAt: staleTimestamp,
+            updatedAt: staleTimestamp,
+          },
+        ] as any);
+
+      const memoriesForContext = {
+        author: [],
+        project: [
+          {
+            id: 'bedside-1',
+            scope: 'project',
+            projectId: 'p1',
+            type: 'plan',
+            text: 'Old bedside note',
+            topicTags: ['meta:bedside-note', 'planner:global'],
+            importance: 0.9,
+            createdAt: staleTimestamp,
+            updatedAt: staleTimestamp,
+          },
+          {
+            id: 'other-1',
+            scope: 'project',
+            projectId: 'p1',
+            type: 'fact',
+            text: 'Another note',
+            topicTags: ['general'],
+            importance: 0.4,
+            createdAt: Date.now(),
+          },
+        ],
+      } as any;
+
+      const refreshedMemoriesForContext = {
+        author: [],
+        project: [
+          {
+            id: 'bedside-2',
+            scope: 'project',
+            projectId: 'p1',
+            type: 'plan',
+            text: 'New bedside note',
+            topicTags: ['meta:bedside-note', 'planner:global'],
+            importance: 0.95,
+            createdAt: staleTimestamp,
+            updatedAt: Date.now(),
+          },
+          memoriesForContext.project[1],
+        ],
+      } as any;
+
+      vi
+        .spyOn(memoryService, 'getMemoriesForContext')
+        .mockResolvedValueOnce(memoriesForContext)
+        .mockResolvedValueOnce(refreshedMemoriesForContext);
+      const evolveSpy = vi
+        .spyOn(memoryService, 'evolveBedsideNote')
+        .mockResolvedValueOnce({} as any);
+      vi
+        .spyOn(memoryService, 'getActiveGoals')
+        .mockResolvedValueOnce([
+          { id: 'g1', title: 'Finish draft', progress: 30 } as any,
+        ]);
+      const formatMemoriesForPromptSpy = vi
+        .spyOn(memoryService, 'formatMemoriesForPrompt')
+        .mockImplementation(({ project }) => project.map((m: any) => m.id).join(','));
+      vi.spyOn(memoryService, 'formatGoalsForPrompt').mockReturnValue('');
+
+      const stateWithAnalysis = {
+        ...baseState,
+        analysis: {
+          result: {
+            summary: 'Fresh summary',
+            strengths: [],
+            weaknesses: ['weakness'],
+            plotIssues: [{ issue: 'Plot hole' }],
+          },
+        },
+      };
+
+      await buildAdaptiveContext(stateWithAnalysis, 'p1', {
+        budget: DEFAULT_BUDGET,
+        bedsideNoteStalenessMs: 1000 * 60 * 60,
+        sceneAwareMemory: false,
+      });
+
+      expect(evolveSpy).toHaveBeenCalledTimes(1);
+      const [projectIdArg, planText, options] = evolveSpy.mock.calls[0];
+      expect(projectIdArg).toBe('p1');
+      expect(planText).toContain('Fresh summary');
+      expect(planText).toContain('Finish draft');
+      expect(options).toEqual({ changeReason: 'staleness_refresh' });
+      const [passedMemories] = formatMemoriesForPromptSpy.mock.calls[0];
+      expect((passedMemories as any).project.map((m: any) => m.id)).toEqual([
+        'bedside-2',
+        'other-1',
+      ]);
+    });
+
+    it('does not refresh bedside note when within staleness threshold', async () => {
+      const recentTimestamp = Date.now() - 1000 * 60 * 10;
+      vi
+        .spyOn(memoryService, 'getMemories')
+        .mockResolvedValueOnce([
+          {
+            id: 'bedside-1',
+            scope: 'project',
+            projectId: 'p1',
+            type: 'plan',
+            text: 'Recent bedside note',
+            topicTags: ['meta:bedside-note', 'planner:global'],
+            importance: 0.9,
+            createdAt: recentTimestamp,
+            updatedAt: recentTimestamp,
+          },
+        ] as any);
+
+      vi
+        .spyOn(memoryService, 'getMemoriesForContext')
+        .mockResolvedValueOnce({
+          author: [],
+          project: [
+            {
+              id: 'bedside-1',
+              scope: 'project',
+              projectId: 'p1',
+              type: 'plan',
+              text: 'Recent bedside note',
+              topicTags: ['meta:bedside-note', 'planner:global'],
+              importance: 0.9,
+              createdAt: recentTimestamp,
+              updatedAt: recentTimestamp,
+            },
+          ],
+        } as any);
+      const evolveSpy = vi
+        .spyOn(memoryService, 'evolveBedsideNote')
+        .mockResolvedValue({} as any);
+      vi.spyOn(memoryService, 'getActiveGoals').mockResolvedValueOnce([] as any);
+      vi.spyOn(memoryService, 'formatMemoriesForPrompt').mockReturnValue('');
+      vi.spyOn(memoryService, 'formatGoalsForPrompt').mockReturnValue('');
+
+      await buildAdaptiveContext(baseState, 'p1', {
+        budget: DEFAULT_BUDGET,
+        bedsideNoteStalenessMs: 1000 * 60 * 60,
+        sceneAwareMemory: false,
+      });
+
+      expect(evolveSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('estimateTokens', () => {

@@ -16,10 +16,12 @@ import {
   formatGoalsForPrompt,
   getMemories,
   createMemory,
+  evolveBedsideNote,
   BEDSIDE_NOTE_TAG,
   BEDSIDE_NOTE_DEFAULT_TAGS,
   type MemoryRelevanceOptions,
 } from '../memory';
+import type { AgentGoal } from '../memory/types';
 import { ActiveModels, TokenLimits, type ModelId } from '../../config/models';
 import type { SceneType, Scene } from '../../types/intelligence';
 
@@ -505,6 +507,49 @@ const buildAnalysisSection = (state: AppBrainState, maxTokens: number): ContextS
   };
 };
 
+export const DEFAULT_BEDSIDE_NOTE_STALENESS_MS = 1000 * 60 * 60 * 6; // 6 hours
+
+const buildBedsidePlanText = (
+  analysis: AppBrainState['analysis']['result'],
+  goals: AgentGoal[],
+): string | null => {
+  if (!analysis && goals.length === 0) {
+    return null;
+  }
+
+  const lines: string[] = [];
+
+  if (analysis) {
+    if (analysis.summary) {
+      lines.push(`Current story summary: ${analysis.summary.slice(0, 240)}`);
+    }
+
+    if (analysis.weaknesses && analysis.weaknesses.length > 0) {
+      lines.push('Top concerns:');
+      for (const weakness of analysis.weaknesses.slice(0, 3)) {
+        lines.push(`- ${weakness}`);
+      }
+    }
+
+    if (analysis.plotIssues && analysis.plotIssues.length > 0) {
+      lines.push('Key plot issues to watch:');
+      for (const issue of analysis.plotIssues.slice(0, 3)) {
+        lines.push(`- ${issue.issue}`);
+      }
+    }
+  }
+
+  if (goals.length > 0) {
+    lines.push('Active goals:');
+    for (const goal of goals.slice(0, 3)) {
+      const progressPart = typeof goal.progress === 'number' ? ` [${goal.progress}%]` : '';
+      lines.push(`- ${goal.title}${progressPart}`);
+    }
+  }
+
+  return lines.join('\n');
+};
+
 const ensureBedsideNoteExists = async (projectId: string): Promise<void> => {
   const existing = await getMemories({
     scope: 'project',
@@ -530,10 +575,11 @@ const ensureBedsideNoteExists = async (projectId: string): Promise<void> => {
 };
 
 const buildMemorySection = async (
-  state: AppBrainState, 
+  state: AppBrainState,
   projectId: string | null,
   maxTokens: number,
-  relevance?: MemoryRelevanceOptions
+  relevance?: MemoryRelevanceOptions,
+  bedsideNoteStalenessMs: number = DEFAULT_BEDSIDE_NOTE_STALENESS_MS,
 ): Promise<ContextSection> => {
   let content = '[AGENT MEMORY]\n';
   
@@ -550,31 +596,44 @@ const buildMemorySection = async (
   
   try {
     await ensureBedsideNoteExists(projectId as string);
-    
-    // Use relevance-filtered memories if relevance options provided
-    const memoriesPromise = relevance && (
-      relevance.activeEntityNames?.length || relevance.selectionKeywords?.length
-    )
-      ? getRelevantMemoriesForContext(projectId, relevance, { limit: 20 })
-      : getMemoriesForContext(projectId, { limit: 20 });
-    
-    const [memories, goals] = await Promise.all([
-      memoriesPromise,
-      getActiveGoals(projectId),
-    ]);
+
+    const fetchMemories = () =>
+      relevance && (relevance.activeEntityNames?.length || relevance.selectionKeywords?.length)
+        ? getRelevantMemoriesForContext(projectId, relevance, { limit: 20 })
+        : getMemoriesForContext(projectId, { limit: 20 });
+
+    const goalsPromise = getActiveGoals(projectId);
+    let memories = await fetchMemories();
+    const goals = await goalsPromise;
+
+    const bedsideNotes = memories.project.filter(note =>
+      note.topicTags.includes(BEDSIDE_NOTE_TAG)
+    );
+    const firstBedsideNote = bedsideNotes[0];
+
+    if (firstBedsideNote && firstBedsideNote.updatedAt) {
+      const ageMs = Date.now() - firstBedsideNote.updatedAt;
+      if (ageMs > bedsideNoteStalenessMs) {
+        const planText = buildBedsidePlanText(state.analysis.result, goals);
+        if (planText) {
+          await evolveBedsideNote(projectId, planText, { changeReason: 'staleness_refresh' });
+          memories = await fetchMemories();
+        }
+      }
+    }
 
     const maxChars = maxTokens * 4;
 
-    const bedsideNotes = memories.project.filter(note => 
+    const refreshedBedsideNotes = memories.project.filter(note =>
       note.topicTags.includes(BEDSIDE_NOTE_TAG)
     );
-    const otherProjectNotes = memories.project.filter(note => 
+    const otherProjectNotes = memories.project.filter(note =>
       !note.topicTags.includes(BEDSIDE_NOTE_TAG)
     );
 
     const prioritizedMemories = {
       author: memories.author,
-      project: [...bedsideNotes, ...otherProjectNotes],
+      project: [...refreshedBedsideNotes, ...otherProjectNotes],
     };
 
     const formattedMemories = formatMemoriesForPrompt(prioritizedMemories, { 
@@ -681,6 +740,8 @@ export interface AdaptiveContextOptions {
   relevance?: MemoryRelevanceOptions;
   /** Enable scene-aware memory filtering (Smartness Upgrade) */
   sceneAwareMemory?: boolean;
+  /** Maximum age for bedside-note before auto-refresh */
+  bedsideNoteStalenessMs?: number;
 }
 
 /**
@@ -691,7 +752,12 @@ export const buildAdaptiveContext = async (
   projectId: string | null,
   options: AdaptiveContextOptions = {}
 ): Promise<AdaptiveContextResult> => {
-  const { budget = DEFAULT_BUDGET, relevance, sceneAwareMemory = true } = options;
+  const {
+    budget = DEFAULT_BUDGET,
+    relevance,
+    sceneAwareMemory = true,
+    bedsideNoteStalenessMs = DEFAULT_BEDSIDE_NOTE_STALENESS_MS,
+  } = options;
   const sectionsIncluded: string[] = [];
   const sectionsTruncated: string[] = [];
   const sectionsOmitted: string[] = [];
@@ -717,10 +783,11 @@ export const buildAdaptiveContext = async (
     Math.floor(budget.totalTokens * budget.sections.analysis)
   );
   const memorySection = await buildMemorySection(
-    state, 
+    state,
     projectId,
     Math.floor(budget.totalTokens * budget.sections.memory),
-    effectiveRelevance
+    effectiveRelevance,
+    bedsideNoteStalenessMs
   );
   const loreSection = buildLoreSection(
     state, 
