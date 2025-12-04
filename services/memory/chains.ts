@@ -6,7 +6,13 @@
  */
 
 import { db } from '../db';
-import { MemoryNote, UpdateMemoryNoteInput, BEDSIDE_NOTE_TAG, BEDSIDE_NOTE_DEFAULT_TAGS } from './types';
+import {
+  MemoryNote,
+  UpdateMemoryNoteInput,
+  BEDSIDE_NOTE_TAG,
+  BEDSIDE_NOTE_DEFAULT_TAGS,
+  BedsideNoteContent,
+} from './types';
 import { createMemory, getMemory, updateMemory, getMemories } from './index';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,6 +85,7 @@ export const evolveMemory = async (
     changeType?: ChainedMemory['changeType'];
     changeReason?: string;
     keepOriginal?: boolean;
+    structuredContent?: Record<string, unknown>;
   } = {}
 ): Promise<MemoryNote> => {
   const {
@@ -131,6 +138,7 @@ export const evolveMemory = async (
       ...(changeReason ? [`change_reason:${changeReason}`] : []),
     ],
     importance: existing.importance,
+    structuredContent: options.structuredContent ?? existing.structuredContent,
   });
   
   // Mark original as superseded
@@ -176,13 +184,14 @@ export const getOrCreateBedsideNote = async (
 export const evolveBedsideNote = async (
   projectId: string,
   newText: string,
-  options: { changeReason?: string } = {},
+  options: { changeReason?: string; structuredContent?: BedsideNoteContent } = {},
 ): Promise<MemoryNote> => {
   const base = await getOrCreateBedsideNote(projectId);
   return evolveMemory(base.id, newText, {
     changeType: 'update',
     changeReason: options.changeReason,
     keepOriginal: true,
+    structuredContent: options.structuredContent,
   });
 };
 

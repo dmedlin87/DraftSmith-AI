@@ -24,7 +24,8 @@ import {
   ConsolidationResult,
 } from '@/services/memory/consolidation';
 import { getActiveGoals, evolveBedsideNote } from '@/services/memory';
-import type { AgentGoal } from '@/services/memory/types';
+import type { AgentGoal, BedsideNoteContent } from '@/services/memory/types';
+import { serializeBedsideNote } from '@/services/memory/bedsideNoteSerializer';
 import { AnalysisResult } from '@/types';
 import { ManuscriptIntelligence } from '@/types/intelligence';
 
@@ -72,49 +73,37 @@ export interface UseMemoryIntelligenceResult {
   refreshHealthStats: () => Promise<void>;
 }
 
-function buildBedsidePlanText(
+function buildBedsidePlan(
   analysis: AnalysisResult | null,
   goals: AgentGoal[],
-): string | null {
+): { text: string; content: BedsideNoteContent } | null {
   if (!analysis && goals.length === 0) {
     return null;
   }
 
-  const lines: string[] = [];
+  const content: BedsideNoteContent = {
+    currentFocus: analysis?.summary,
+    warnings: [
+      ...(analysis?.weaknesses || []),
+      ...(analysis?.plotIssues || []).map(issue => issue.issue),
+    ].filter(Boolean),
+    activeGoals: goals.map(goal => ({
+      title: goal.title,
+      progress: goal.progress,
+      status: goal.status,
+      updatedAt: goal.updatedAt ?? goal.createdAt,
+    })),
+    nextSteps: analysis?.generalSuggestions?.slice(0, 4) || [],
+    recentDiscoveries: (analysis?.plotIssues || [])
+      .map(issue => issue.suggestion)
+      .filter(Boolean)
+      .slice(0, 4),
+  };
 
-  if (analysis) {
-    if (analysis.summary) {
-      lines.push(`Current story summary: ${analysis.summary.slice(0, 240)}`);
-    }
+  const { text } = serializeBedsideNote(content);
+  if (!text) return null;
 
-    if (analysis.weaknesses && analysis.weaknesses.length > 0) {
-      lines.push('Top concerns:');
-      for (const weakness of analysis.weaknesses.slice(0, 3)) {
-        lines.push(`- ${weakness}`);
-      }
-    }
-
-    if (analysis.plotIssues && analysis.plotIssues.length > 0) {
-      lines.push('Key plot issues to watch:');
-      for (const issue of analysis.plotIssues.slice(0, 3)) {
-        lines.push(`- ${issue.issue}`);
-      }
-    }
-  }
-
-  if (goals.length > 0) {
-    lines.push('Active goals:');
-    for (const goal of goals.slice(0, 3)) {
-      const progressPart = typeof goal.progress === 'number' ? ` [${goal.progress}%]` : '';
-      lines.push(`- ${goal.title}${progressPart}`);
-    }
-  }
-
-  if (lines.length === 0) {
-    return null;
-  }
-
-  return lines.join('\n');
+  return { text, content };
 }
 
 export function useMemoryIntelligence(
@@ -150,9 +139,12 @@ export function useMemoryIntelligence(
 
       try {
         const goals = await getActiveGoals(projectId);
-        const planText = buildBedsidePlanText(analysis, goals);
-        if (planText) {
-          await evolveBedsideNote(projectId, planText, { changeReason: 'analysis_update' });
+        const plan = buildBedsidePlan(analysis, goals);
+        if (plan) {
+          await evolveBedsideNote(projectId, plan.text, {
+            changeReason: 'analysis_update',
+            structuredContent: plan.content,
+          });
         }
       } catch (e) {
         console.warn('[useMemoryIntelligence] Failed to evolve bedside note:', e);

@@ -19,6 +19,37 @@ export type MemoryScope = 'project' | 'author';
 export type MemoryNoteType = 'observation' | 'issue' | 'fact' | 'plan' | 'preference';
 
 /**
+ * Structured payload for bedside-note planning memories (Phase 4 roadmap).
+ */
+export interface BedsideNoteGoalSummary {
+  /** Goal title to display */
+  title: string;
+  /** Optional progress percentage */
+  progress?: number;
+  /** Goal status for context (active/completed/abandoned) */
+  status?: GoalStatus;
+  /** Optional additional detail for the goal */
+  note?: string;
+  /** Timestamp for prioritization */
+  updatedAt?: number;
+}
+
+export interface BedsideNoteContent {
+  /** What the user or agent should focus on now */
+  currentFocus?: string;
+  /** Outstanding questions that need resolution */
+  openQuestions?: string[];
+  /** Highest-priority goals with progress */
+  activeGoals?: BedsideNoteGoalSummary[];
+  /** New facts, issues, or insights since the last update */
+  recentDiscoveries?: string[];
+  /** Concrete next steps for the next session */
+  nextSteps?: string[];
+  /** Continuity risks or contradictions to watch */
+  warnings?: string[];
+}
+
+/**
  * MemoryNote - A single unit of agent memory.
  * 
  * Project-scoped notes track story-specific information (characters, plot decisions).
@@ -57,11 +88,14 @@ export interface MemoryNote {
   /** Last update timestamp (epoch ms) */
   updatedAt?: number;
   
-  /** 
+  /**
    * Optional embedding vector for semantic search.
    * Added when vector search is enabled (Phase 2).
    */
   embedding?: number[];
+
+  /** Optional structured content for prompt-aware memories (e.g., bedside note) */
+  structuredContent?: Record<string, unknown>;
 }
 
 /**

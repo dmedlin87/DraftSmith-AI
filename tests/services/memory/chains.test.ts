@@ -102,8 +102,10 @@ describe('memory chains bedside-note helpers', () => {
       createdAt: Date.now(),
     } as MemoryNote));
 
+    const structuredContent = { currentFocus: 'Updated bedside plan' } as any;
     const result = await evolveBedsideNote(projectId, 'Updated bedside plan text', {
       changeReason: 'analysis_update',
+      structuredContent,
     });
 
     expect(memoryMocks.getMemory).toHaveBeenCalledWith('bed-base');
@@ -122,6 +124,7 @@ describe('memory chains bedside-note helpers', () => {
         'change_reason:analysis_update',
       ])
     );
+    expect(createInput.structuredContent).toBe(structuredContent);
     expect(result.id).toBe('bed-evolved');
   });
 });

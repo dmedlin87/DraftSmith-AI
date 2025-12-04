@@ -241,8 +241,9 @@ describe('useMemoryIntelligence', () => {
     const [projectIdArg, planText, options] = mocks.evolveBedsideNote.mock.calls[0];
     expect(projectIdArg).toBe('project-1');
     expect(typeof planText).toBe('string');
-    expect(planText).toContain('Current story summary:');
-    expect(planText).toContain('Top concerns:');
-    expect(options).toEqual({ changeReason: 'analysis_update' });
+    expect(planText).toContain('Current Focus:');
+    expect(planText).toContain('Active Goals:');
+    expect(planText).toContain('Warnings & Risks:');
+    expect(options).toEqual({ changeReason: 'analysis_update', structuredContent: expect.any(Object) });
   });
 });
