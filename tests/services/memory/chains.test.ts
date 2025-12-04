@@ -21,7 +21,14 @@ vi.mock('@/services/memory/index', async (importOriginal) => {
   };
 });
 
-const { getOrCreateBedsideNote, evolveBedsideNote, detectBedsideNoteConflicts } = chains;
+const {
+  getOrCreateBedsideNote,
+  getOrCreateAuthorBedsideNote,
+  evolveBedsideNote,
+  detectBedsideNoteConflicts,
+  seedProjectBedsideNoteFromAuthor,
+  recordProjectRetrospective,
+} = chains;
 
 describe('memory chains bedside-note helpers', () => {
   const projectId = 'proj-bedside';
@@ -248,5 +255,144 @@ describe('memory chains bedside-note helpers', () => {
       (input.topicTags || []).includes('change_reason:roll_up')
     );
     expect(rollupCalls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('creates an author-scoped bedside note with author tag', async () => {
+    memoryMocks.getMemories.mockResolvedValueOnce([]);
+
+    const createdAuthor: MemoryNote = {
+      id: 'author-bed-1',
+      scope: 'author',
+      type: 'plan',
+      text: 'Author bedside notebook — keep cross-project lessons, recurring issues, and style reminders here.',
+      topicTags: [BEDSIDE_NOTE_TAG, 'planner:global', 'arc:story', 'scope:author'],
+      importance: 0.9,
+      createdAt: Date.now(),
+    };
+
+    memoryMocks.createMemory.mockResolvedValueOnce(createdAuthor);
+
+    const result = await getOrCreateAuthorBedsideNote();
+
+    expect(memoryMocks.getMemories).toHaveBeenCalledWith({
+      scope: 'author',
+      type: 'plan',
+      topicTags: [BEDSIDE_NOTE_TAG, 'scope:author'],
+      limit: 1,
+    });
+    expect(memoryMocks.createMemory).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: 'author', topicTags: expect.arrayContaining(['scope:author']) })
+    );
+    expect(result).toBe(createdAuthor);
+  });
+
+  it('seeds project bedside note with author warnings and tags', async () => {
+    const projectBase: MemoryNote = {
+      id: 'bed-project',
+      scope: 'project',
+      projectId,
+      type: 'plan',
+      text: 'Project planning notes',
+      topicTags: [BEDSIDE_NOTE_TAG],
+      importance: 0.8,
+      createdAt: Date.now(),
+    };
+
+    const authorBase: MemoryNote = {
+      id: 'bed-author',
+      scope: 'author',
+      type: 'plan',
+      text: 'Author bedside note text',
+      topicTags: [BEDSIDE_NOTE_TAG, 'scope:author'],
+      importance: 0.9,
+      createdAt: Date.now(),
+      structuredContent: { warnings: ['Avoid overwriting key symbols'] },
+    };
+
+    memoryMocks.getMemories.mockImplementation(async params => {
+      if (params.scope === 'author') return [authorBase];
+      return [projectBase];
+    });
+
+    memoryMocks.getMemory.mockResolvedValue(projectBase);
+
+    memoryMocks.createMemory.mockImplementation(async input => ({
+      ...projectBase,
+      ...input,
+      id: 'bed-project-next',
+      createdAt: Date.now(),
+    } as MemoryNote));
+
+    memoryMocks.updateMemory.mockImplementation(async (_id: string, updates: any) => ({
+      ...projectBase,
+      ...updates,
+    } as MemoryNote));
+
+    const seeded = await seedProjectBedsideNoteFromAuthor(projectId);
+
+    expect(memoryMocks.createMemory).toHaveBeenCalled();
+    const [seedCreateCall] = memoryMocks.createMemory.mock.calls[0];
+    expect(seedCreateCall.text).toContain('Author bedside note text');
+    const taggedUpdate = memoryMocks.updateMemory.mock.calls.find(([_id, payload]) =>
+      (payload.topicTags || []).includes('seeded_from:author_bedside')
+    );
+    expect(taggedUpdate?.[1].topicTags).toEqual(expect.arrayContaining(['seeded_from:author_bedside']));
+  });
+
+  it('records a project retrospective into the author bedside note', async () => {
+    const projectBase: MemoryNote = {
+      id: 'bed-project',
+      scope: 'project',
+      projectId,
+      type: 'plan',
+      text: 'Final bedside focus',
+      topicTags: [BEDSIDE_NOTE_TAG],
+      importance: 0.8,
+      createdAt: Date.now(),
+      structuredContent: { warnings: ['Track eye colors'] },
+    };
+
+    const authorBase: MemoryNote = {
+      id: 'bed-author',
+      scope: 'author',
+      type: 'plan',
+      text: 'Existing author bedside',
+      topicTags: [BEDSIDE_NOTE_TAG, 'scope:author'],
+      importance: 0.9,
+      createdAt: Date.now(),
+    };
+
+    memoryMocks.getMemories.mockImplementation(async params => {
+      if (params.scope === 'project') return [projectBase];
+      return [authorBase];
+    });
+
+    memoryMocks.getMemory.mockImplementation(async id => {
+      if (id === authorBase.id) return authorBase;
+      return projectBase;
+    });
+
+    memoryMocks.createMemory.mockImplementation(async input => ({
+      ...authorBase,
+      ...input,
+      id: 'bed-author-next',
+      createdAt: Date.now(),
+    } as MemoryNote));
+
+    memoryMocks.updateMemory.mockImplementation(async (_id: string, updates: any) => ({
+      ...authorBase,
+      ...updates,
+    } as MemoryNote));
+
+    const result = await recordProjectRetrospective(projectId, { summary: 'Project finished strong' });
+
+    expect(memoryMocks.createMemory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scope: 'author',
+        text: 'Project finished strong',
+        topicTags: expect.arrayContaining(['scope:author']),
+      })
+    );
+    expect(result.topicTags).toContain(`retrospective:project:${projectId}`);
   });
 });

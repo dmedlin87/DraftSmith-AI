@@ -374,6 +374,33 @@ export const getOrCreateBedsideNote = async (
   });
 };
 
+export const getOrCreateAuthorBedsideNote = async (): Promise<MemoryNote> => {
+  const existing = await getMemories({
+    scope: 'author',
+    type: 'plan',
+    topicTags: [BEDSIDE_NOTE_TAG, 'scope:author'],
+    limit: 1,
+  });
+
+  if (existing.length > 0) {
+    return existing[0];
+  }
+
+  const text =
+    'Author bedside notebook — keep cross-project lessons, recurring issues, and style reminders here.';
+
+  const embedding = await embedBedsideNoteText(text);
+
+  return createMemory({
+    scope: 'author',
+    type: 'plan',
+    text,
+    topicTags: [...BEDSIDE_NOTE_DEFAULT_TAGS, 'scope:author'],
+    importance: 0.9,
+    embedding,
+  });
+};
+
 export const evolveBedsideNote = async (
   projectId: string,
   newText: string,
@@ -383,6 +410,7 @@ export const evolveBedsideNote = async (
     arcId?: string;
     chapterId?: string;
     conflictResolution?: 'auto' | 'agent' | 'user';
+    extraTags?: string[];
   } = {},
 ): Promise<MemoryNote> => {
   const base = await getOrCreateBedsideNote(projectId, {
@@ -422,9 +450,16 @@ export const evolveBedsideNote = async (
   });
 
   if (conflicts.length > 0) {
-    const uniqueTags = new Set(
-      evolved.topicTags.concat(['conflict:detected']).concat(resolution ? [`conflict:resolution:${resolution}`] : [])
-    );
+    options.extraTags = [
+      ...(options.extraTags ?? []),
+      'conflict:detected',
+      ...(resolution ? [`conflict:resolution:${resolution}`] : []),
+    ];
+  }
+
+  const extraTags = options.extraTags ?? [];
+  if (extraTags.length > 0) {
+    const uniqueTags = new Set(evolved.topicTags.concat(extraTags));
     evolved = await updateMemory(evolved.id, { topicTags: Array.from(uniqueTags) });
   }
 
@@ -464,6 +499,76 @@ export const evolveBedsideNote = async (
       });
     }
   }
+
+  return evolved;
+};
+
+export const seedProjectBedsideNoteFromAuthor = async (
+  projectId: string,
+): Promise<MemoryNote> => {
+  const [projectBedside, authorBedside] = await Promise.all([
+    getOrCreateBedsideNote(projectId),
+    getOrCreateAuthorBedsideNote(),
+  ]);
+
+  const authorWarnings = (authorBedside.structuredContent as BedsideNoteContent | undefined)?.warnings ?? [];
+
+  const warningBlock =
+    authorWarnings.length > 0 ? `\n\nAuthor warnings to watch:\n- ${authorWarnings.join('\n- ')}` : '';
+  const suggestionBlock = authorBedside.text ? `\n\nAuthor bedside note: ${authorBedside.text}` : '';
+
+  const updatedText = `${projectBedside.text}${warningBlock}${suggestionBlock}`;
+
+  return evolveBedsideNote(projectId, updatedText, {
+    changeReason: 'project_seed',
+    structuredContent: {
+      ...(projectBedside.structuredContent as BedsideNoteContent | undefined),
+      warnings: [
+        ...((projectBedside.structuredContent as BedsideNoteContent | undefined)?.warnings ?? []),
+        ...authorWarnings,
+      ],
+    },
+    extraTags: ['seeded_from:author_bedside'],
+  });
+};
+
+export const recordProjectRetrospective = async (
+  projectId: string,
+  options: { summary?: string } = {},
+): Promise<MemoryNote> => {
+  const project = await db.projects.get(projectId);
+  const projectBedside = await getOrCreateBedsideNote(projectId);
+  const authorBedside = await getOrCreateAuthorBedsideNote();
+
+  const baseWarnings = (authorBedside.structuredContent as BedsideNoteContent | undefined)?.warnings ?? [];
+  const projectWarnings = (projectBedside.structuredContent as BedsideNoteContent | undefined)?.warnings ?? [];
+
+  const summary =
+    options.summary ||
+    `Project retrospective for "${project?.title ?? projectId}":\n- Final bedside note focus: ${projectBedside.text}`;
+
+  const embedding = await embedBedsideNoteText(summary);
+
+  const structuredContent: BedsideNoteContent = {
+    ...(authorBedside.structuredContent as BedsideNoteContent | undefined),
+    recentDiscoveries: [
+      ...((authorBedside.structuredContent as BedsideNoteContent | undefined)?.recentDiscoveries ?? []),
+      `Retrospective captured from project ${project?.title ?? projectId}`,
+    ],
+    warnings: [...baseWarnings, ...projectWarnings],
+  };
+
+  let evolved = await evolveMemory(authorBedside.id, summary, {
+    changeReason: 'project_retrospective',
+    structuredContent,
+    keepOriginal: true,
+    embedding,
+  });
+
+  const uniqueTags = new Set(
+    evolved.topicTags.concat(['scope:author', `retrospective:project:${projectId}`])
+  );
+  evolved = await updateMemory(evolved.id, { topicTags: Array.from(uniqueTags) });
 
   return evolved;
 };

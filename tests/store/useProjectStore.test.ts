@@ -5,6 +5,7 @@ vi.unmock('@/features/project/store/useProjectStore');
 
 import { useProjectStore } from '@/features/project/store/useProjectStore';
 import { db } from '@/services/db';
+import { seedProjectBedsideNoteFromAuthor } from '@/services/memory/chains';
 
 // Mock the database
 vi.mock('@/services/db', () => ({
@@ -42,6 +43,10 @@ vi.mock('@/services/manuscriptIndexer', () => ({
     characters: {},
     lastUpdated: {},
   }))
+}));
+
+vi.mock('@/services/memory/chains', () => ({
+  seedProjectBedsideNoteFromAuthor: vi.fn(() => Promise.resolve()),
 }));
 
 describe('useProjectStore', () => {
@@ -564,6 +569,7 @@ describe('useProjectStore', () => {
 
       expect(projectId).toBeDefined();
       expect(db.projects.add).toHaveBeenCalled();
+      expect(seedProjectBedsideNoteFromAuthor).toHaveBeenCalledWith(projectId);
     });
 
     it('creates project with setting information', async () => {

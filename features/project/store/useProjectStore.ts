@@ -4,6 +4,7 @@ import { Project, Chapter, Lore, ManuscriptIndex, Branch } from '@/types/schema'
 import { AnalysisResult } from '@/types';
 import { ParsedChapter } from '@/services/manuscriptParser';
 import { createEmptyIndex } from '@/services/manuscriptIndexer';
+import { seedProjectBedsideNoteFromAuthor } from '@/services/memory/chains';
 
 interface ProjectState {
   // State
@@ -177,10 +178,15 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    
+
     await db.projects.add(newProject);
     set(state => ({ projects: [newProject, ...state.projects] }));
     await get().loadProject(id);
+    try {
+      await seedProjectBedsideNoteFromAuthor(id);
+    } catch (error) {
+      console.warn('[useProjectStore] Failed to seed bedside note from author memory', error);
+    }
     return id;
   },
 
