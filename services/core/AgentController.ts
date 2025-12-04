@@ -10,6 +10,7 @@ import type { UsageMetadata, Chat, FunctionCall } from '@google/genai';
 import type { ToolResult } from '@/services/gemini/toolExecutor';
 import { createAgentSession } from '@/services/gemini/agent';
 import { runAgentToolLoop, AgentToolLoopModelResult } from '@/services/core/agentToolLoop';
+import { getOrCreateBedsideNote } from '@/services/memory';
 
 // ---- Shared with existing hook ----
 
@@ -217,6 +218,8 @@ export class DefaultAgentController implements AgentController {
   private currentPersona: Persona | undefined;
   private currentAbortController: AbortController | null = null;
   private chat: Chat | null = null;
+  private significantActionSeen = false;
+  private bedsideNoteUpdatedThisTurn = false;
 
   constructor(args: AgentControllerConstructorArgs) {
     this.context = args.context;
@@ -309,6 +312,8 @@ export class DefaultAgentController implements AgentController {
     }
 
     this.updateState({ status: 'thinking', lastError: undefined });
+    this.significantActionSeen = false;
+    this.bedsideNoteUpdatedThisTurn = false;
 
     const internalAbortController = new AbortController();
     this.currentAbortController = internalAbortController;
@@ -393,6 +398,8 @@ export class DefaultAgentController implements AgentController {
       };
       this.events?.onMessage?.(modelMessage);
 
+      await this.maybeSuggestBedsideNoteRefresh(`${input.text} ${responseText || ''}`);
+
       this.updateState({ status: 'idle' });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
@@ -427,6 +434,60 @@ export class DefaultAgentController implements AgentController {
     });
   }
 
+  private isSignificantTool(name: string): boolean {
+    return new Set([
+      'update_manuscript',
+      'append_to_manuscript',
+      'insert_at_cursor',
+      'rewrite_selection',
+      'continue_writing',
+      'create_goal',
+      'update_goal',
+      'write_memory_note',
+      'update_memory_note',
+      'delete_memory_note',
+      'update_bedside_note',
+    ]).has(name);
+  }
+
+  private buildBedsideReflectionMessage(toolName: string): string | null {
+    if (!this.context.projectId) return null;
+    if (!this.isSignificantTool(toolName)) return null;
+
+    this.significantActionSeen = true;
+    if (toolName === 'update_bedside_note') {
+      this.bedsideNoteUpdatedThisTurn = true;
+    }
+
+    return 'Reflection: Should the bedside note be updated based on this action? If yes, call update_bedside_note with the section/action/content to capture the change.';
+  }
+
+  private async maybeSuggestBedsideNoteRefresh(conversationText: string) {
+    if (!this.context.projectId || !this.significantActionSeen || this.bedsideNoteUpdatedThisTurn) {
+      return;
+    }
+
+    try {
+      const note = await getOrCreateBedsideNote(this.context.projectId);
+      const normalizedConversation = conversationText.trim().toLowerCase();
+      const normalizedNote = (note.text || '').toLowerCase();
+
+      if (!normalizedConversation || normalizedNote.includes(normalizedConversation)) {
+        return;
+      }
+
+      const preview = note.text ? note.text.slice(0, 160) : 'No bedside note text yet.';
+      const suggestion = `🧠 Bedside note may need an update. Conversation touched on: "${conversationText.slice(0, 120)}". Current note preview: "${preview}". Consider calling update_bedside_note to align.`;
+      this.events?.onMessage?.({
+        role: 'system',
+        text: suggestion,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.warn('[AgentController] Failed bedside-note reflection:', error);
+    }
+  }
+
   private async processToolCalls(
     functionCalls: FunctionCall[],
   ): Promise<Array<{ id: string; name: string; response: { result: string } }>> {
@@ -451,7 +512,10 @@ export class DefaultAgentController implements AgentController {
         const args = (call.args || {}) as Record<string, unknown>;
         const result = await this.deps.toolExecutor.execute(call.name, args);
 
-        const actionResult = result.message;
+        const reflection = this.buildBedsideReflectionMessage(call.name);
+        const actionResult = reflection
+          ? `${result.message}\n\n${reflection}`
+          : result.message;
 
         responses.push({
           id: call.id || (typeof crypto !== 'undefined' ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`),

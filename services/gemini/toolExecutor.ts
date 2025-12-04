@@ -8,6 +8,7 @@ import {
   addWatchedEntity,
   searchMemoriesByTags,
   formatMemoriesForPrompt,
+  applyBedsideNoteMutation,
 } from '@/services/memory';
 import { CommandRegistry } from '@/services/commands/registry';
 import { getCommandHistory } from '@/services/commands/history';
@@ -26,6 +27,7 @@ const MEMORY_TOOL_NAMES = new Set<string>([
   'create_goal',
   'update_goal',
   'watch_entity',
+  'update_bedside_note',
 ]);
 
 export function isMemoryToolName(toolName: string): boolean {
@@ -325,6 +327,27 @@ export async function executeMemoryToolCall(
           reason,
         });
         message = `Added watched entity "${entity.name}" (priority: ${entity.priority})`;
+        break;
+      }
+
+      case 'update_bedside_note': {
+        if (!projectId) {
+          throw new Error('Cannot update bedside note without an active projectId');
+        }
+
+        const section = args.section as string;
+        const action = args.action as string;
+        if (!section || !action || typeof args.content === 'undefined') {
+          throw new Error('Missing required fields for update_bedside_note');
+        }
+
+        const updated = await applyBedsideNoteMutation(projectId, {
+          section: section as any,
+          action: action as any,
+          content: args.content,
+        });
+
+        message = `Bedside note ${action} applied to ${section}. New text: ${updated.text}`;
         break;
       }
 

@@ -4,17 +4,26 @@ import { DefaultAgentController } from '@/services/core/AgentController';
 const {
   mockCreateAgentSession,
   mockSendMessage,
+  mockGetOrCreateBedsideNote,
 } = vi.hoisted(() => {
   const mockSendMessage = vi.fn();
   const mockCreateAgentSession = vi.fn(() => ({
     sendMessage: mockSendMessage,
   }));
 
-  return { mockCreateAgentSession, mockSendMessage };
+  const mockGetOrCreateBedsideNote = vi.fn(async () => ({
+    text: 'Existing bedside note summary',
+  }));
+
+  return { mockCreateAgentSession, mockSendMessage, mockGetOrCreateBedsideNote };
 });
 
 vi.mock('@/services/gemini/agent', () => ({
   createAgentSession: mockCreateAgentSession,
+}));
+
+vi.mock('@/services/memory', () => ({
+  getOrCreateBedsideNote: mockGetOrCreateBedsideNote,
 }));
 
 describe('DefaultAgentController', () => {
@@ -164,6 +173,74 @@ describe('DefaultAgentController', () => {
       ),
     ).toBe(true);
     expect(messageTexts).toContain('After tools');
+    expect(
+      messageTexts.some(text => text.includes('Bedside note may need an update')),
+    ).toBe(true);
+
+    const toolResponsePayload = mockSendMessage.mock.calls[2][0].message[0].functionResponse.response
+      .result as string;
+    expect(toolResponsePayload).toContain('Reflection: Should the bedside note be updated');
+    expect(mockGetOrCreateBedsideNote).toHaveBeenCalled();
+  });
+
+  it('skips bedside-note suggestion when update tool already ran', async () => {
+    mockSendMessage.mockResolvedValueOnce({ text: '' });
+    mockSendMessage.mockResolvedValueOnce({
+      text: '',
+      functionCalls: [
+        { id: 'call-1', name: 'update_bedside_note', args: { foo: 'bar' } },
+      ],
+    });
+    mockSendMessage.mockResolvedValueOnce({
+      text: 'After bedside update',
+      functionCalls: [],
+    });
+
+    const events = {
+      onStateChange: vi.fn(),
+      onMessage: vi.fn(),
+      onError: vi.fn(),
+    };
+
+    const { controller, toolExecutor } = makeController({
+      events,
+      toolExecutorExecute: async () => ({ success: true, message: 'bedside updated' }),
+    });
+
+    await controller.sendMessage({ text: 'Reflect on bedside', editorContext });
+
+    const messageTexts = (events.onMessage as any).mock.calls.map(
+      (call: any[]) => call[0].text,
+    );
+
+    expect(messageTexts.some(text => text.includes('Bedside note may need an update'))).toBe(
+      false,
+    );
+    expect(toolExecutor.execute).toHaveBeenCalledWith('update_bedside_note', { foo: 'bar' });
+    expect(mockGetOrCreateBedsideNote).not.toHaveBeenCalled();
+  });
+
+  it('does not add reflection text for non-significant tools', async () => {
+    mockSendMessage.mockResolvedValueOnce({ text: '' });
+    mockSendMessage.mockResolvedValueOnce({
+      text: '',
+      functionCalls: [
+        { id: 'call-1', name: 'highlight_text', args: { foo: 'bar' } },
+      ],
+    });
+    mockSendMessage.mockResolvedValueOnce({ text: 'No reflection', functionCalls: [] });
+
+    const { controller } = makeController({
+      toolExecutorExecute: async () => ({ success: true, message: 'highlighted' }),
+    });
+
+    await controller.sendMessage({ text: 'Highlight only', editorContext });
+
+    const toolResponsePayload = mockSendMessage.mock.calls[2][0].message[0].functionResponse.response
+      .result as string;
+
+    expect(toolResponsePayload).toBe('highlighted');
+    expect(mockGetOrCreateBedsideNote).not.toHaveBeenCalled();
   });
 
   it('honors an already-aborted external signal by skipping tools and final reply', async () => {

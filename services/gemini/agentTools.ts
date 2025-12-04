@@ -621,6 +621,40 @@ Examples: "Fix Seth's character arc", "Resolve Act 2 pacing issues", "Complete c
       },
       required: ['name']
     }
+  },
+  {
+    name: 'update_bedside_note',
+    description: `Update the bedside-note planning memory with structured content.
+Use this after meaningful events (analysis results, major edits, goal changes).
+Choose the section to update, the action to take, and provide the content to set/append/remove.`,
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        section: {
+          type: Type.STRING,
+          enum: [
+            'currentFocus',
+            'warnings',
+            'activeGoals',
+            'nextSteps',
+            'openQuestions',
+            'recentDiscoveries',
+          ],
+          description: 'Bedside-note section to update',
+        },
+        action: {
+          type: Type.STRING,
+          enum: ['set', 'append', 'remove'],
+          description: 'How to apply the content to the section',
+        },
+        content: {
+          type: Type.STRING,
+          description:
+            'Content to apply. For activeGoals, pass a title or JSON object {"title": "...", "progress": 50}. For list sections, provide bullet text.'
+        },
+      },
+      required: ['section', 'action', 'content'],
+    },
   }
 ];
 

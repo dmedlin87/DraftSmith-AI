@@ -19,6 +19,7 @@ import type {
 
 // Re-export types for convenience
 export * from './types';
+export * from './bedsideNoteMutations';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // MEMORY NOTES

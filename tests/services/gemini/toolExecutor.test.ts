@@ -52,6 +52,9 @@ vi.mock('@/services/memory', () => {
     name: 'Seth',
     priority: 'high',
   });
+  const applyBedsideNoteMutation = vi.fn().mockResolvedValue({
+    text: 'New bedside note text',
+  });
   const searchMemoriesByTags = vi.fn().mockResolvedValue([
     { scope: 'project', type: 'observation', text: 'note1' },
     { scope: 'author', type: 'preference', text: 'note2' },
@@ -65,6 +68,7 @@ vi.mock('@/services/memory', () => {
     addGoal,
     updateGoal,
     addWatchedEntity,
+    applyBedsideNoteMutation,
     searchMemoriesByTags,
     formatMemoriesForPrompt,
   };
@@ -221,6 +225,22 @@ describe('toolExecutor core helpers', () => {
     );
 
     expect(memoryModule.createMemory).toHaveBeenCalled();
+    expect(result.success).toBe(true);
+  });
+
+  it('handles update_bedside_note via memory helper', async () => {
+    const result = await executeMemoryToolCall(
+      'update_bedside_note',
+      { section: 'currentFocus', action: 'set', content: 'Fresh focus' },
+      'project-1',
+    );
+
+    expect(memoryModule.applyBedsideNoteMutation).toHaveBeenCalledWith('project-1', {
+      section: 'currentFocus',
+      action: 'set',
+      content: 'Fresh focus',
+    });
+    expect(result.message).toContain('Bedside note set applied');
     expect(result.success).toBe(true);
   });
 });
