@@ -1,8 +1,6 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
 # Quill AI
+
+![Quill AI Banner](https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6)
 
 <!-- TEST_HEALTH_BADGES:START - Do not remove or modify this section -->
 <!-- Badges are updated by npm run test:status -->
@@ -45,21 +43,21 @@ See:
 - [docs/TEST_AUDIT.md](./docs/TEST_AUDIT.md) — Auto-generated gap analysis
 - [docs/TESTING.md](./docs/TESTING.md) — Test strategy and patterns
 
-## Documentation
+## Documentation (start here)
 
-All project documentation lives in the [`docs/`](./docs/) folder:
-
-- **Architecture & agents**
-  - **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** — Core state layers (persistence, editor session, AI engine, omniscient agent).
-  - **[AGENT_ARCHITECTURE.md](./docs/AGENT_ARCHITECTURE.md)** — Omniscient agent + App Brain design and migration plan.
-  - **[AGENT_TOOLS_REFERENCE.md](./docs/AGENT_TOOLS_REFERENCE.md)** — Agent tools, commands, and how to add new tools.
-  - **[APP_BRAIN_FLOW.md](./docs/APP_BRAIN_FLOW.md)** — Mermaid map of how the App Brain, memory, and intelligence layers interact.
-  - **[INTELLIGENCE_ENGINE.md](./docs/INTELLIGENCE_ENGINE.md)** — Deterministic manuscript indexing, HUD, and intelligence signals.
-- **Testing & coverage**
-  - **[TESTING.md](./docs/TESTING.md)** — Test strategy, CI flow, and local commands.
-  - **[TEST_COVERAGE.md](./docs/TEST_COVERAGE.md)** — Auto-generated coverage snapshot.
-  - **[TEST_AUDIT.md](./docs/TEST_AUDIT.md)** — Auto-generated test gap audit.
-  - **[TEST_COVERAGE_PLAN.md](./docs/TEST_COVERAGE_PLAN.md)** — Plan for driving every file toward ≥90% coverage.
-- **API, limits, & memory**
-  - **[token-limits.md](./docs/token-limits.md)** — User-facing guidance and developer notes on analysis token limits.
-  - **[MEMORY_SYSTEM.md](./docs/MEMORY_SYSTEM.md)** — Agent memory tables, services, and prompt integration.
+1. **Docs index:** [docs/README.md](./docs/README.md) — curated map of every doc.
+2. **Agent routing guide:** [docs/AGENT_ROUTING.md](./docs/AGENT_ROUTING.md) — step-by-step flow for how the agent thinks, which files to read, and where to extend/debug it.
+3. **Architecture & flows**
+   - [ARCHITECTURE.md](./docs/ARCHITECTURE.md) — Persistence → editor session → AI engine → omniscient agent.
+   - [APP_BRAIN_FLOW.md](./docs/APP_BRAIN_FLOW.md) — App Brain + memory + intelligence diagram.
+   - [AGENT_ARCHITECTURE.md](./docs/AGENT_ARCHITECTURE.md) — App Brain + orchestrator vision and phases.
+   - [INTELLIGENCE_ENGINE.md](./docs/INTELLIGENCE_ENGINE.md) — Deterministic manuscript indexing and HUD signals.
+4. **Agent tools & memory**
+   - [AGENT_TOOLS_REFERENCE.md](./docs/AGENT_TOOLS_REFERENCE.md) — Tool catalog and how to add tools.
+   - [MEMORY_SYSTEM.md](./docs/MEMORY_SYSTEM.md) — Memory schemas, services, and prompt integration.
+   - [HANDOFF_BEDSIDE_NOTES.md](./docs/HANDOFF_BEDSIDE_NOTES.md) — Current bedside-note state, triggers, and roadmap slices.
+5. **Testing & coverage**
+   - [TESTING.md](./docs/TESTING.md) — Strategy, CI flow, patterns.
+   - [TEST_COVERAGE.md](./docs/TEST_COVERAGE.md), [TEST_AUDIT.md](./docs/TEST_AUDIT.md), [TEST_COVERAGE_PLAN.md](./docs/TEST_COVERAGE_PLAN.md) — Coverage status and gap plans.
+6. **Limits**
+   - [token-limits.md](./docs/token-limits.md) — Analysis and model token guidance.
