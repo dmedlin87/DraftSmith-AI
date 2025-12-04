@@ -18,6 +18,7 @@ export {
   eventBus,
   emitSelectionChanged,
   emitCursorMoved,
+  emitChapterChanged,
   emitChapterSwitched,
   emitTextChanged,
   emitEditMade,
@@ -27,6 +28,8 @@ export {
   emitPanelSwitched,
   emitZenModeToggled,
 } from './eventBus';
+
+export { startAppBrainEventObserver } from './eventObserver';
 
 // Context builders
 export {

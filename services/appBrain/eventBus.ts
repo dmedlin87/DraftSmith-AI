@@ -195,6 +195,8 @@ class EventBusImpl {
         return `Selected: "${event.payload.text.slice(0, 30)}${event.payload.text.length > 30 ? '...' : ''}"`;
       case 'CURSOR_MOVED':
         return `Cursor at position ${event.payload.position}${event.payload.scene ? ` (${event.payload.scene} scene)` : ''}`;
+      case 'CHAPTER_CHANGED':
+        return `Moved to chapter "${event.payload.title}"`;
       case 'CHAPTER_SWITCHED':
         return `Switched to "${event.payload.title}"`;
       case 'TEXT_CHANGED':
@@ -234,6 +236,27 @@ export const emitSelectionChanged = (text: string, start: number, end: number) =
 
 export const emitCursorMoved = (position: number, scene: string | null) => {
   eventBus.emit({ type: 'CURSOR_MOVED', payload: { position, scene } });
+};
+
+export const emitChapterChanged = (
+  projectId: string,
+  chapterId: string,
+  title: string,
+  metadata?: {
+    issues?: { description: string; severity?: string }[];
+    watchedEntities?: { name: string; reason?: string; priority?: string }[];
+  },
+) => {
+  eventBus.emit({
+    type: 'CHAPTER_CHANGED',
+    payload: {
+      projectId,
+      chapterId,
+      title,
+      issues: metadata?.issues,
+      watchedEntities: metadata?.watchedEntities,
+    },
+  });
 };
 
 export const emitChapterSwitched = (chapterId: string, title: string) => {

@@ -129,10 +129,31 @@ export interface AppEventBase {
   timestamp: number;
 }
 
+export interface ChapterIssueSummary {
+  description: string;
+  severity?: 'info' | 'warning' | 'error' | 'critical';
+}
+
+export interface WatchedEntitySummary {
+  name: string;
+  reason?: string;
+  priority?: 'high' | 'medium' | 'low';
+}
+
 export type AppEvent =
   | AppEventBase & { type: 'SELECTION_CHANGED'; payload: { text: string; start: number; end: number } }
   | AppEventBase & { type: 'CURSOR_MOVED'; payload: { position: number; scene: string | null } }
   | AppEventBase & { type: 'CHAPTER_SWITCHED'; payload: { chapterId: string; title: string } }
+  | AppEventBase & {
+      type: 'CHAPTER_CHANGED';
+      payload: {
+        projectId: string;
+        chapterId: string;
+        title: string;
+        issues?: ChapterIssueSummary[];
+        watchedEntities?: WatchedEntitySummary[];
+      };
+    }
   | AppEventBase & { type: 'TEXT_CHANGED'; payload: { length: number; delta: number } }
   | AppEventBase & {
       type: 'ANALYSIS_COMPLETED';

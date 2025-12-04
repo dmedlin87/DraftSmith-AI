@@ -42,6 +42,7 @@ const calculateImportance = (event: AppEvent): ContextPatch['importance'] => {
   switch (event.type) {
     // High importance - affects current context significantly
     case 'CHAPTER_SWITCHED':
+    case 'CHAPTER_CHANGED':
     case 'BRANCH_SWITCHED':
     case 'ANALYSIS_COMPLETE':
     case 'MEMORY_CREATED':
@@ -77,6 +78,7 @@ const summarizeEvent = (event: AppEvent): string => {
       return `Cursor moved to position ${cursor.position}${cursor.scene ? ` (${cursor.scene} scene)` : ''}`;
     
     case 'CHAPTER_SWITCHED':
+    case 'CHAPTER_CHANGED':
       const chapter = event.payload as { chapterId?: string; title?: string };
       return `Switched to chapter: "${chapter.title || chapter.chapterId}"`;
     
@@ -129,6 +131,7 @@ export class ContextStreamer {
       eventTypes: options.eventTypes || [
         'SELECTION_CHANGED',
         'CURSOR_MOVED',
+        'CHAPTER_CHANGED',
         'CHAPTER_SWITCHED',
         'BRANCH_SWITCHED',
         'ANALYSIS_COMPLETE',
