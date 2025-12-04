@@ -1,0 +1,122 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`BedsideNoteHistory snapshot > renders a consistent diff view 1`] = `
+<div>
+  <div
+    class="space-y-2"
+  >
+    <div
+      class="border border-[var(--border-primary)] rounded p-3 bg-[var(--surface-tertiary)] space-y-2"
+    >
+      <div
+        class="flex items-center justify-between"
+      >
+        <div
+          class="flex flex-col"
+        >
+          <span
+            class="text-sm font-semibold text-[var(--text-primary)]"
+          >
+            Version 
+            1
+          </span>
+          <span
+            class="text-xs text-[var(--text-tertiary)]"
+          >
+            12/4/2024, 7:03:20 PM
+          </span>
+        </div>
+        <div
+          class="flex items-center gap-2 text-xs text-[var(--text-tertiary)]"
+        >
+          <span
+            class="px-2 py-1 rounded bg-[var(--interactive-bg)] text-[var(--text-primary)]"
+          >
+            analysis_update
+          </span>
+          <span
+            class="px-2 py-1 rounded bg-[var(--surface-secondary)]"
+          >
+            initial
+          </span>
+          <button
+            class="px-2 py-1 rounded border border-[var(--border-primary)] text-[var(--text-secondary)]"
+            type="button"
+          >
+            Pin
+          </button>
+        </div>
+      </div>
+      <div
+        class="text-xs bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded p-2 space-y-1"
+      >
+        <div
+          class="whitespace-pre-wrap"
+        >
+          <span
+            class="text-[var(--success-600)]"
+          >
+            + Example diff
+          </span>
+        </div>
+      </div>
+    </div>
+    <div
+      class="border border-[var(--border-primary)] rounded p-3 bg-[var(--surface-tertiary)] space-y-2"
+    >
+      <div
+        class="flex items-center justify-between"
+      >
+        <div
+          class="flex flex-col"
+        >
+          <span
+            class="text-sm font-semibold text-[var(--text-primary)]"
+          >
+            Version 
+            2
+          </span>
+          <span
+            class="text-xs text-[var(--text-tertiary)]"
+          >
+            12/4/2024, 7:13:20 PM
+          </span>
+        </div>
+        <div
+          class="flex items-center gap-2 text-xs text-[var(--text-tertiary)]"
+        >
+          <span
+            class="px-2 py-1 rounded bg-[var(--interactive-bg)] text-[var(--text-primary)]"
+          >
+            significant_edit
+          </span>
+          <span
+            class="px-2 py-1 rounded bg-[var(--surface-secondary)]"
+          >
+            update
+          </span>
+          <button
+            class="px-2 py-1 rounded border border-[var(--border-primary)] text-[var(--text-secondary)]"
+            type="button"
+          >
+            Pin
+          </button>
+        </div>
+      </div>
+      <div
+        class="text-xs bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded p-2 space-y-1"
+      >
+        <div
+          class="whitespace-pre-wrap"
+        >
+          <span
+            class="text-[var(--success-600)]"
+          >
+            + Example diff
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;

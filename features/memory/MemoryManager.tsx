@@ -22,6 +22,7 @@ import {
   MemoryScope,
   WatchedEntity,
 } from '@/services/memory/types';
+import { BedsideNotePanel } from './components/BedsideNotePanel';
 
 interface MemoryManagerProps {
   projectId?: string | null;
@@ -274,6 +275,8 @@ export const MemoryManager: React.FC<MemoryManagerProps> = ({ projectId }) => {
           {error}
         </div>
       )}
+
+      <BedsideNotePanel projectId={projectId} goals={goals} />
 
       {/* Memories Section */}
       <section className="space-y-3">
