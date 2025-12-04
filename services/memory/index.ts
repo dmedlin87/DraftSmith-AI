@@ -644,6 +644,7 @@ export * from './consolidation';
 // ────────────────────────────────────────────────────────────────────────────────
 
 export * from './sessionTracker';
+export * from './sessionLifecycle';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // ENHANCEMENT 3A: SEMANTIC DEDUPLICATION
