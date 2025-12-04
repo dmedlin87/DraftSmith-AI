@@ -1,5 +1,6 @@
 import { evolveBedsideNote } from '@/services/memory';
 import { eventBus } from './eventBus';
+import { getSignificantEditMonitor, startSignificantEditMonitor } from './significantEditMonitor';
 import type { AppEvent, ChapterIssueSummary, WatchedEntitySummary } from './types';
 
 const formatIssue = (issue: ChapterIssueSummary): string | null => {
@@ -42,11 +43,18 @@ const handleChapterChanged = async (event: Extract<AppEvent, { type: 'CHAPTER_CH
 };
 
 export const startAppBrainEventObserver = (): (() => void) => {
-  const unsubscribe = eventBus.subscribe('CHAPTER_CHANGED', (event) => {
+  const unsubscribeChapter = eventBus.subscribe('CHAPTER_CHANGED', (event: Extract<AppEvent, { type: 'CHAPTER_CHANGED' }>) => {
+    startSignificantEditMonitor(event.payload.projectId);
     void handleChapterChanged(event);
   });
 
+  const unsubscribeTextChanged = eventBus.subscribe('TEXT_CHANGED', (event: Extract<AppEvent, { type: 'TEXT_CHANGED' }>) => {
+    // Forward to significant edit monitor; it handles debounce/cooldown.
+    getSignificantEditMonitor().handleTextChanged(event);
+  });
+
   return () => {
-    unsubscribe();
+    unsubscribeChapter();
+    unsubscribeTextChanged();
   };
 };

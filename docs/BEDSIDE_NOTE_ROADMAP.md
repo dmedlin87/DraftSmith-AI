@@ -104,17 +104,18 @@ The metaphor: a novelist's bedside notebook where they jot down "don't forget Sa
 
 **Rationale:** Provides continuity across writing sessions, especially for users who work sporadically.
 
-#### 3.4 Significant Text Changes
+#### 3.4 Significant Text Changes ✅ (implemented)
 
-**Trigger:** Large manuscript edits (e.g., >500 characters added/removed).
+**Trigger:** Large manuscript edits detected via `TEXT_CHANGED` events.
 
-**Implementation:**
+**Implementation (shipped):**
 
-- Subscribe to `TEXT_CHANGED` events with a debounce.
-- If cumulative delta exceeds threshold within a window, evolve bedside note with "Major edit detected — review continuity."
-- Use `changeReason: 'significant_edit'`.
+- `startAppBrainEventObserver` now subscribes to `TEXT_CHANGED` and forwards to the singleton `SignificantEditMonitor`.
+- The monitor accumulates absolute deltas, debounced (300ms) to capture bursts, and fires only when cumulative delta ≥ 500 chars **and** a per-project cooldown (5 minutes) has elapsed.
+- On trigger, it calls `evolveBedsideNote(projectId, planText, { changeReason: 'significant_edit' })` with a short warning: “Significant edits detected — analysis may be stale. Run analysis to refresh.”
+- Anti-spam: cooldown prevents repeated evolutions inside the window.
 
-**Rationale:** Large edits may invalidate previous analysis; the bedside note should flag this.
+**Rationale:** Large edits may invalidate previous analysis; the bedside note should flag this and prompt a refresh.
 
 #### 3.5 Staleness Refresh
 

@@ -1,9 +1,11 @@
+import type { AppEvent } from './types';
 import { evolveBedsideNote } from '../memory';
 import { eventBus } from './eventBus';
 
 interface SignificantEditOptions {
   threshold?: number;
   debounceMs?: number;
+  cooldownMs?: number;
 }
 
 class SignificantEditMonitor {
@@ -15,10 +17,14 @@ class SignificantEditMonitor {
   private unsubscribe: (() => void) | null = null;
   private threshold: number;
   private debounceMs: number;
+  private cooldownMs: number;
+  private lastTriggerTime = 0;
+  private lastHandledTimestamp: number | null = null;
 
   private constructor(options?: SignificantEditOptions) {
     this.threshold = options?.threshold ?? 500;
-    this.debounceMs = options?.debounceMs ?? 2000;
+    this.debounceMs = options?.debounceMs ?? 300;
+    this.cooldownMs = options?.cooldownMs ?? 5 * 60 * 1000; // 5 minutes
   }
 
   static getInstance(options?: SignificantEditOptions): SignificantEditMonitor {
@@ -34,10 +40,10 @@ class SignificantEditMonitor {
     this.projectId = projectId;
     this.threshold = options?.threshold ?? this.threshold;
     this.debounceMs = options?.debounceMs ?? this.debounceMs;
+    this.cooldownMs = options?.cooldownMs ?? this.cooldownMs;
 
     this.unsubscribe = eventBus.subscribe('TEXT_CHANGED', (event) => {
-      this.cumulativeDelta += Math.abs(event.payload.delta);
-      this.scheduleDebounce();
+      this.handleTextChanged(event);
     });
   }
 
@@ -46,10 +52,25 @@ class SignificantEditMonitor {
     this.unsubscribe = null;
     this.projectId = null;
     this.cumulativeDelta = 0;
+    this.lastTriggerTime = 0;
+    this.lastHandledTimestamp = null;
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
+  }
+
+  handleTextChanged(event: AppEvent) {
+    if (event.type !== 'TEXT_CHANGED') return;
+
+    // Avoid double-processing the same emitted event when multiple subscribers forward it.
+    if (event.timestamp && this.lastHandledTimestamp === event.timestamp) {
+      return;
+    }
+    this.lastHandledTimestamp = event.timestamp ?? Date.now();
+
+    this.cumulativeDelta += Math.abs(event.payload.delta);
+    this.scheduleDebounce();
   }
 
   private scheduleDebounce() {
@@ -68,13 +89,17 @@ class SignificantEditMonitor {
       return;
     }
 
-    if (this.cumulativeDelta > this.threshold) {
+    const now = Date.now();
+    const withinCooldown = now - this.lastTriggerTime < this.cooldownMs;
+
+    if (this.cumulativeDelta >= this.threshold && !withinCooldown) {
       try {
         await evolveBedsideNote(
           this.projectId,
-          'Major edit detected — review continuity.',
+          'Significant edits detected — analysis may be stale. Run analysis to refresh.',
           { changeReason: 'significant_edit' },
         );
+        this.lastTriggerTime = now;
       } catch (error) {
         console.warn('[SignificantEditMonitor] Failed to evolve bedside note', error);
       }

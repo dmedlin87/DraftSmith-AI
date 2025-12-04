@@ -292,10 +292,11 @@ In `services/appBrain/adaptiveContext.ts`:
   - The memory chains module (`services/memory/chains.ts`) exports helpers that specialize `evolveMemory` for bedside-note planning:
     - `getOrCreateBedsideNote(projectId)` — finds the existing bedside-note `MemoryNote` for the project (tagged `meta:bedside-note`) or creates it with default text if missing.
     - `evolveBedsideNote(projectId, newText, options?)` — uses `evolveMemory` to add a new version to the bedside-note chain, preserving the earlier versions and tagging changes with a `changeReason`.
-  - Evolution is currently driven by two main flows:
+  - Evolution is currently driven by three main flows:
     - **Analysis observation:** `useMemoryIntelligence` (in `features/agent/hooks/useMemoryIntelligence.ts`) calls `observeAnalysisResults`, then pulls `getActiveGoals(projectId)` and synthesizes a concise bedside-note update (story summary, top concerns, key plot issues, and active goals). It then calls `evolveBedsideNote(projectId, planText, { changeReason: 'analysis_update' })`.
     - **Proactive thinking:** `ProactiveThinker` (in `services/appBrain/proactiveThinker.ts`) runs in the background on AppBrain events (including `ANALYSIS_COMPLETED`). When the LLM reports a **significant** thinking result, it combines the top proactive suggestions with `getImportantReminders(projectId)` into a short plan and calls `evolveBedsideNote(projectId, planText, { changeReason: 'proactive_thinking' })`.
-  - This creates an **Evolving Memory chain** for the bedside note over time, so the agent always has a compact, up-to-date planning summary that reflects recent analysis, goals, and proactive reminders.
+    - **Significant edit detection:** `SignificantEditMonitor` (in `services/appBrain/significantEditMonitor.ts`) listens to `TEXT_CHANGED` events. It accumulates absolute deltas with a short debounce (~300ms) and, when the cumulative change exceeds a threshold (default 500 chars) and the per-project cooldown (5 minutes) has elapsed, it evolves the bedside note with a warning plan text and `changeReason: 'significant_edit'`. This prevents analysis staleness after large edit bursts and includes anti-spam cooldown.
+  - This creates an **Evolving Memory chain** for the bedside note over time, so the agent always has a compact, up-to-date planning summary that reflects recent analysis, goals, proactive reminders, and major edits while throttling spam via cooldown.
 
 ### 6.2 ToolExecutor Integration
 
